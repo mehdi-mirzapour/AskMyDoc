@@ -1,0 +1,40 @@
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+
+
+class FileUploadResponse(BaseModel):
+    """Response for file upload"""
+    filename: str
+    tables_created: List[str]
+    row_count: int
+    status: str = "success"
+
+
+class QuestionRequest(BaseModel):
+    """Request for asking a question"""
+    question: str
+    model: Optional[str] = None  # Optional model override
+
+
+class QuestionResponse(BaseModel):
+    """Response for question answering"""
+    question: str
+    answer: str
+    sql_queries: Optional[List[str]] = None
+    data_used: Optional[List[str]] = None
+    model: str
+    timestamp: datetime = datetime.now()
+
+
+class SchemaResponse(BaseModel):
+    """Response for schema information"""
+    tables: Dict[str, Any]
+    total_tables: int
+    total_rows: int
+
+
+class ErrorResponse(BaseModel):
+    """Error response"""
+    error: str
+    detail: Optional[str] = None

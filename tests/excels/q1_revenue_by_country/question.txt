@@ -1,0 +1,1 @@
+Compute the total revenue per country across all files.
