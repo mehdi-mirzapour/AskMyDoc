@@ -237,3 +237,10 @@ def get_agent() -> DocumentAgent:
     if _agent is None:
         _agent = DocumentAgent()
     return _agent
+
+
+def reset_agent():
+    """Reset the global agent instance"""
+    global _agent
+    _agent = None
+    logger.info("[bold yellow]🔄 Agent memory reset[/bold yellow]", extra={"markup": True})

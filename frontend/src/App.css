@@ -737,3 +737,30 @@ body {
     font-size: 1.5rem;
   }
 }
+
+/* Reset Button */
+.reset-btn {
+  padding: 0.75rem;
+  background: transparent;
+  color: #666;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
+
+.reset-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+  color: #e53e3e;
+}
+
+.reset-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

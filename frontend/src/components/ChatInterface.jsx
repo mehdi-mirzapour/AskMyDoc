@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const ChatInterface = ({ onAskQuestion, onUploadFiles, hasFiles }) => {
+const ChatInterface = ({ onAskQuestion, onUploadFiles, onResetMemory, hasFiles }) => {
     const [messages, setMessages] = useState([]);
     const [question, setQuestion] = useState('');
     const [loading, setLoading] = useState(false);
@@ -17,6 +17,24 @@ const ChatInterface = ({ onAskQuestion, onUploadFiles, hasFiles }) => {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    const handleReset = async () => {
+        try {
+            await onResetMemory();
+            const resetMessage = {
+                type: 'system',
+                content: '🔄 Agent AI memory reset'
+            };
+            setMessages(prev => [...prev, resetMessage]);
+        } catch (error) {
+            console.error('Reset error:', error);
+            const errorMessage = {
+                type: 'error',
+                content: '❌ Failed to reset memory: ' + error.message
+            };
+            setMessages(prev => [...prev, errorMessage]);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -80,7 +98,7 @@ const ChatInterface = ({ onAskQuestion, onUploadFiles, hasFiles }) => {
             // Add success message
             const successMessage = {
                 type: 'system',
-                content: `✅ Successfully uploaded ${files.length} file(s). Created ${response.tables_created.length} tables with ${response.row_count} rows. You can now ask questions!`
+                content: `✅ Successfully uploaded ${files.length} file(s).Created ${response.tables_created.length} tables with ${response.row_count} rows.You can now ask questions!`
             };
             setMessages(prev => [...prev, successMessage]);
         } catch (error) {
@@ -114,14 +132,9 @@ const ChatInterface = ({ onAskQuestion, onUploadFiles, hasFiles }) => {
             }
         };
 
-        if (showSamples) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [showSamples]);
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleExampleClick = (exampleQ) => {
         setQuestion(exampleQ);
@@ -154,7 +167,7 @@ const ChatInterface = ({ onAskQuestion, onUploadFiles, hasFiles }) => {
                 ) : (
                     <div className="messages">
                         {messages.map((msg, index) => (
-                            <div key={index} className={`message ${msg.type}`}>
+                            <div key={index} className={`message ${msg.type} `}>
                                 <div className="message-icon">
                                     {msg.type === 'user' ? '👤' :
                                         msg.type === 'ai' ? '🤖' :
@@ -235,6 +248,16 @@ const ChatInterface = ({ onAskQuestion, onUploadFiles, hasFiles }) => {
                         </div>
                     )}
                 </div>
+
+                <button
+                    type="button"
+                    onClick={handleReset}
+                    className="reset-btn"
+                    disabled={loading || uploading}
+                    title="Reset Agent Memory"
+                >
+                    🔄
+                </button>
 
                 <input
                     type="text"

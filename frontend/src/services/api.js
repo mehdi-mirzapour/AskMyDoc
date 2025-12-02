@@ -29,3 +29,8 @@ export const getSchema = async () => {
     const response = await axios.get(`${API_BASE_URL}/upload/schema`);
     return response.data;
 };
+
+export const resetMemory = async () => {
+    const response = await axios.post(`${API_BASE_URL}/query/reset`);
+    return response.data;
+};

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import ChatInterface from './components/ChatInterface';
-import { uploadFiles, askQuestion } from './services/api';
+import { uploadFiles, askQuestion, resetMemory } from './services/api';
 import './App.css';
 
 function App() {
@@ -25,6 +25,11 @@ function App() {
         return response;
     };
 
+    const handleResetMemory = async () => {
+        const response = await resetMemory();
+        return response;
+    };
+
     if (!showChat) {
         return <LandingPage onGetStarted={handleGetStarted} />;
     }
@@ -44,6 +49,7 @@ function App() {
             <ChatInterface
                 onAskQuestion={handleAskQuestion}
                 onUploadFiles={handleUploadFiles}
+                onResetMemory={handleResetMemory}
                 hasFiles={filesUploaded}
             />
 
