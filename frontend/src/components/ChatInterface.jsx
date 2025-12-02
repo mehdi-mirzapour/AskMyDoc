@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const ChatInterface = ({ onAskQuestion }) => {
+const ChatInterface = ({ onAskQuestion, onUploadFiles, hasFiles }) => {
     const [messages, setMessages] = useState([]);
     const [question, setQuestion] = useState('');
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [showSamples, setShowSamples] = useState(false);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
+    const samplesRef = useRef(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -17,6 +21,16 @@ const ChatInterface = ({ onAskQuestion }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!question.trim()) return;
+
+        // Check if files are uploaded
+        if (!hasFiles) {
+            const errorMessage = {
+                type: 'system',
+                content: '⚠️ Please upload Excel files before asking questions. Click the 📎 button to attach files.'
+            };
+            setMessages(prev => [...prev, errorMessage]);
+            return;
+        }
 
         // Add user message
         const userMessage = { type: 'user', content: question };
@@ -47,16 +61,71 @@ const ChatInterface = ({ onAskQuestion }) => {
         }
     };
 
+    const handleFileSelect = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        setUploading(true);
+
+        // Add system message about upload
+        const uploadingMessage = {
+            type: 'system',
+            content: `📤 Uploading ${files.length} file(s)...`
+        };
+        setMessages(prev => [...prev, uploadingMessage]);
+
+        try {
+            const response = await onUploadFiles(files);
+
+            // Add success message
+            const successMessage = {
+                type: 'system',
+                content: `✅ Successfully uploaded ${files.length} file(s). Created ${response.tables_created.length} tables with ${response.row_count} rows. You can now ask questions!`
+            };
+            setMessages(prev => [...prev, successMessage]);
+        } catch (error) {
+            console.error('Upload error:', error);
+            const errorMessage = {
+                type: 'error',
+                content: '❌ Upload failed: ' + error.message
+            };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setUploading(false);
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
     const exampleQuestions = [
         "Compute the total revenue per country across all files",
         "Which product has the highest average margin?",
         "Compare sales between Q1 and Q2",
-        "List the top 5 customers by total spend",
-        "Highlight any missing values or inconsistencies"
+        "List the top 5 customers by total spend"
     ];
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (samplesRef.current && !samplesRef.current.contains(event.target)) {
+                setShowSamples(false);
+            }
+        };
+
+        if (showSamples) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showSamples]);
 
     const handleExampleClick = (exampleQ) => {
         setQuestion(exampleQ);
+        setShowSamples(false);
     };
 
     return (
@@ -65,9 +134,12 @@ const ChatInterface = ({ onAskQuestion }) => {
                 {messages.length === 0 ? (
                     <div className="welcome-message">
                         <h2>👋 Welcome to AskMyDoc!</h2>
-                        <p>Upload your Excel files and start asking questions.</p>
+                        <p>Upload your Excel files and start asking questions about your data.</p>
+                        <div className="upload-prompt">
+                            <p className="upload-hint">📎 Click the attach button below to upload your files</p>
+                        </div>
                         <div className="example-questions">
-                            <h3>Try these example questions:</h3>
+                            <h3>Example questions you can ask:</h3>
                             {exampleQuestions.map((q, i) => (
                                 <button
                                     key={i}
@@ -84,7 +156,9 @@ const ChatInterface = ({ onAskQuestion }) => {
                         {messages.map((msg, index) => (
                             <div key={index} className={`message ${msg.type}`}>
                                 <div className="message-icon">
-                                    {msg.type === 'user' ? '👤' : msg.type === 'ai' ? '🤖' : '⚠️'}
+                                    {msg.type === 'user' ? '👤' :
+                                        msg.type === 'ai' ? '🤖' :
+                                            msg.type === 'system' ? 'ℹ️' : '⚠️'}
                                 </div>
                                 <div className="message-content">
                                     <p>{msg.content}</p>
@@ -117,13 +191,59 @@ const ChatInterface = ({ onAskQuestion }) => {
 
             <form onSubmit={handleSubmit} className="input-area">
                 <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept=".xlsx,.xls"
+                    multiple
+                    style={{ display: 'none' }}
+                />
+                <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="attach-btn"
+                    disabled={uploading}
+                    title="Attach Excel files"
+                >
+                    {uploading ? '⏳' : '📎'}
+                </button>
+
+                <div className="samples-container" ref={samplesRef}>
+                    <button
+                        type="button"
+                        onClick={() => setShowSamples(!showSamples)}
+                        className="samples-btn"
+                        disabled={loading || uploading}
+                        title="Sample questions"
+                    >
+                        💡
+                    </button>
+
+                    {showSamples && (
+                        <div className="samples-dropdown">
+                            <div className="samples-header">Sample Questions</div>
+                            {exampleQuestions.map((question, index) => (
+                                <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => handleExampleClick(question)}
+                                    className="sample-item"
+                                >
+                                    {question}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <input
                     type="text"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Ask a question about your documents..."
-                    disabled={loading}
+                    placeholder={hasFiles ? "Ask a question about your documents..." : "Upload files first, then ask questions..."}
+                    disabled={loading || uploading}
                 />
-                <button type="submit" disabled={loading || !question.trim()}>
+                <button type="submit" disabled={loading || !question.trim() || uploading}>
                     {loading ? '⏳' : '➤'}
                 </button>
             </form>

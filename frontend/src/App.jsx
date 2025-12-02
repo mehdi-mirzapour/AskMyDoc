@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
-import FileUpload from './components/FileUpload';
+import LandingPage from './components/LandingPage';
 import ChatInterface from './components/ChatInterface';
-import { uploadFiles, askQuestion, getSchema } from './services/api';
+import { uploadFiles, askQuestion } from './services/api';
 import './App.css';
 
 function App() {
+    const [showChat, setShowChat] = useState(false);
     const [filesUploaded, setFilesUploaded] = useState(false);
     const [uploadStatus, setUploadStatus] = useState(null);
 
-    const handleUploadComplete = async (files) => {
+    const handleGetStarted = () => {
+        setShowChat(true);
+    };
+
+    const handleUploadFiles = async (files) => {
         const response = await uploadFiles(files);
         setUploadStatus(response);
         setFilesUploaded(true);
@@ -19,6 +24,10 @@ function App() {
         const response = await askQuestion(question);
         return response;
     };
+
+    if (!showChat) {
+        return <LandingPage onGetStarted={handleGetStarted} />;
+    }
 
     return (
         <div className="App">
@@ -32,26 +41,11 @@ function App() {
                 )}
             </header>
 
-            <div className="main-container">
-                {!filesUploaded ? (
-                    <div className="upload-section">
-                        <h2>Upload Your Excel Files</h2>
-                        <FileUpload onUploadComplete={handleUploadComplete} />
-                    </div>
-                ) : (
-                    <div className="chat-section">
-                        <ChatInterface onAskQuestion={handleAskQuestion} />
-                        <div className="reset-section">
-                            <button onClick={() => {
-                                setFilesUploaded(false);
-                                setUploadStatus(null);
-                            }} className="reset-btn">
-                                Upload New Files
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
+            <ChatInterface
+                onAskQuestion={handleAskQuestion}
+                onUploadFiles={handleUploadFiles}
+                hasFiles={filesUploaded}
+            />
 
             <footer className="app-footer">
                 <p>Powered by FastAPI + LangChain + LangGraph</p>
