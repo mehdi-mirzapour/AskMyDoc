@@ -40,27 +40,27 @@ AskMyDoc is a full-stack AI-powered document assistant that enables natural lang
 ```mermaid
 graph TB
     subgraph Frontend["Frontend (React + Vite)"]
-        LP[Landing Page<br/>Hero + Features]
-        CI[Chat Interface<br/>Upload + Q&A]
-        SD[Samples Dropdown<br/>💡 Questions]
+        LP["Landing Page<br/>Hero + Features"]
+        CI["Chat Interface<br/>Upload + Q&A"]
+        SD["Samples Dropdown<br/>Sample Questions"]
     end
     
     subgraph Backend["Backend (FastAPI)"]
-        UA[Upload API<br/>/upload/]
-        QA[Query API<br/>/query/]
-        EP[Excel Processor<br/>pandas + SQLite]
-        LA[LangGraph Agent<br/>ReAct Pattern]
+        UA["Upload API<br/>/upload/"]
+        QA["Query API<br/>/query/"]
+        EP["Excel Processor<br/>pandas + SQLite"]
+        LA["LangGraph Agent<br/>ReAct Pattern"]
     end
     
     subgraph Data["Data Layer"]
-        DB[(SQLite<br/>In-Memory)]
-        FS[File Storage<br/>uploads/]
+        DB[("SQLite<br/>In-Memory")]
+        FS["File Storage<br/>uploads/"]
     end
     
     subgraph AI["AI Services"]
-        OAI[OpenAI<br/>gpt-4o-mini]
-        MIS[Mistral<br/>Large (optional)]
-        LF[Langfuse<br/>Monitoring (optional)]
+        OAI["OpenAI<br/>gpt-4o-mini"]
+        MIS["Mistral<br/>Large (optional)"]
+        LF["Langfuse<br/>Monitoring (optional)"]
     end
     
     subgraph Tools["LangChain Tools"]
