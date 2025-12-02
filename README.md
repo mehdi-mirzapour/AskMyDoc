@@ -1,225 +1,161 @@
 # AskMyDoc - AI-Powered Document Assistant
 
-An intelligent document assistant that allows you to upload Excel files and ask natural language questions about them. Built with FastAPI, LangChain, LangGraph, and React.
+**Version:** 2.1.0  
+**Status:** Stable (Pre-Production)
+
+An intelligent document assistant that allows you to upload Excel files and ask natural language questions about them. Built with **FastAPI**, **LangChain**, **LangGraph**, and **React**.
+
+![AskMyDoc UI](https://via.placeholder.com/800x400?text=AskMyDoc+Interface+Placeholder)
+
+---
 
 ## 🚀 Features
 
-- **Multi-File Upload**: Upload multiple Excel files simultaneously
-- **Natural Language Queries**: Ask questions in plain English
-- **AI-Powered Analysis**: Uses LangChain & LangGraph with OpenAI or Mistral
-- **SQLite Database**: Efficient data querying with SQL
-- **Beautiful UI**: Modern React interface with drag-and-drop upload
-- **Rich Logging**: Detailed console logs with Rich library
-- **Langfuse Integration**: Track and monitor AI agent performance
+- **🤖 AI-Powered Analysis**: Uses OpenAI GPT-4o-mini (default) or Mistral Large to understand your data.
+- **📊 Multi-File Support**: Upload multiple Excel files (`.xlsx`, `.xls`) simultaneously.
+- **💬 Natural Language Queries**: Ask questions in plain English (e.g., "Compare revenue between Q1 and Q2").
+- **🔍 Deep Insights**: Supports aggregations, comparisons, rankings, and data quality checks.
+- **⚡ Real-time Processing**: Fast in-memory SQLite database for instant query results.
+- **🎨 Modern UI**: Beautiful React interface with animated landing page and chat experience.
+- **🛠️ Robust Tooling**: Agent uses specialized tools for schema inspection, SQL execution, and data validation.
+- **📈 Observability**: Integrated with Langfuse for tracking AI performance and costs.
+
+---
 
 ## 📋 Prerequisites
 
-- Python 3.9+
-- Node.js 18+ and npm (for frontend)
-- OpenAI API key or Mistral API key
+- **Python** 3.9+
+- **Node.js** 18+ and npm
+- **OpenAI API Key** (Required)
+- **Mistral API Key** (Optional)
+
+---
 
 ## 🛠️ Installation
 
-### Backend Setup
+### 1. Backend Setup
 
-1. **Navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
+```bash
+cd backend
 
-2. **Create and activate virtual environment:**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-4. **Configure API keys:**
-   
-   Edit `app/core/config.py` and replace `XXXX` with your actual API keys:
-   ```python
-   openai_api_key: str = "your-openai-key"
-   mistral_api_key: str = "your-mistral-key"
-   langfuse_public_key: str = "your-langfuse-public-key"
-   langfuse_secret_key: str = "your-langfuse-secret-key"
-   ```
+# Configure Environment
+# Create a .env file or edit app/core/config.py with your keys:
+# OPENAI_API_KEY=sk-...
+```
 
-5. **Change active model (optional):**
-   
-   In `app/core/config.py`, change the `active_model` setting:
-   ```python
-   active_model: str = "openai"  # or "mistral"
-   ```
+### 2. Frontend Setup
 
-### Frontend Setup
+```bash
+cd frontend
 
-1. **Navigate to frontend directory:**
-   ```bash
-   cd frontend
-   ```
+# Install dependencies
+npm install
+```
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+---
 
 ## 🏃 Running the Application
 
 ### Start Backend Server
-
 ```bash
 cd backend
 source venv/bin/activate
-python -m uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload --port 8000
 ```
+*Backend runs on `http://localhost:8000`*
 
-Backend will run on `http://localhost:8000`
-
-### Start Frontend Development Server
-
+### Start Frontend Client
 ```bash
 cd frontend
 npm run dev
 ```
+*Frontend runs on `http://localhost:3000`*
 
-Frontend will run on `http://localhost:3000`
+---
 
-## 📖 Usage
+## 📖 Usage Guide
 
-1. **Open your browser** to `http://localhost:3000`
+1. **Open App**: Go to `http://localhost:3000`.
+2. **Get Started**: Click the "Get Started" button on the landing page.
+3. **Upload Files**: 
+   - Click the 📎 icon in the chat bar.
+   - Select one or more Excel files.
+4. **Ask Questions**:
+   - Type a question like "What is the total sales by region?"
+   - Or click the 💡 icon to see sample questions.
+5. **Analyze**: View the AI's answer and the generated SQL query used to get it.
 
-2. **Upload Excel files:**
-   - Drag and drop files or click to browse
-   - Supports `.xlsx` and `.xls` formats
-   - Multiple files can be uploaded at once
+### Example Questions
+- *"Compute the total revenue per country across all files"*
+- *"Which product has the highest average margin?"*
+- *"Compare sales between Q1 and Q2"*
+- *"List the top 5 customers by total spend"*
+- *"Highlight any missing values or inconsistencies"*
 
-3. **Ask questions:**
-   - Type your question in the chat interface
-   - Examples:
-     - "Compute the total revenue per country across all files"
-     - "Which product has the highest average margin?"
-     - "List the top 5 customers by total spend"
-     - "Highlight any missing values or inconsistencies"
-
-4. **View results:**
-   - AI-generated answers appear in the chat
-   - SQL queries used are shown in expandable sections
-   - Model information is displayed for each response
+---
 
 ## 🧪 Testing
 
-Test files are provided in the `tests/excels/` directory:
+The project includes a comprehensive integration test suite covering critical user journeys.
 
+### Running Tests
 ```bash
 cd backend
 source venv/bin/activate
-
-# Upload the test files via the UI and try these questions:
+pytest tests/test_baseline.py -v
 ```
 
-**Test Questions:**
-1. Compute the total revenue per country across all files
-2. Which product has the highest average margin?
-3. Compare sales between Q1 and Q2
-4. List the top 5 customers by total spend
-5. Highlight any missing values or inconsistencies
+### Test Coverage
+- ✅ **Aggregation**: Revenue by country
+- ✅ **Comparison**: Q1 vs Q2 sales
+- ✅ **Ranking**: Top customers
+- ✅ **Data Quality**: Missing value detection
+- ✅ **Complex Logic**: Highest margin product
 
-## 📁 Project Structure
+---
 
-```
-AskMyDoc/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI application
-│   │   ├── api/                 # API endpoints
-│   │   ├── core/                # Core functionality
-│   │   │   ├── config.py        # Configuration
-│   │   │   ├── excel_processor.py  # Excel → SQLite
-│   │   │   └── logger.py        # Rich logging
-│   │   ├── agents/              # LangGraph agents
-│   │   │   ├── document_agent.py
-│   │   │   └── tools.py         # LangChain tools
-│   │   └── models/              # Pydantic schemas
-│   ├── requirements.txt
-│   └── uploads/                 # Uploaded files
-├── frontend/
-│   ├── src/
-│   │   ├── components/          # React components
-│   │   ├── services/            # API client
-│   │   ├── App.jsx              # Main component
-│   │   └── main.jsx             # Entry point
-│   └── package.json
-└── tests/
-    └── excels/                  # Test Excel files
-```
+## 🏗️ Architecture
+
+- **Frontend**: React + Vite + Axios (Single Page Application)
+- **Backend**: FastAPI (Async REST API)
+- **Database**: SQLite (In-Memory)
+- **AI Orchestration**: LangGraph (Stateful Agents)
+- **LLM Integration**: LangChain (OpenAI/Mistral)
+
+See [TECHNICAL_DOC.md](TECHNICAL_DOC.md) for detailed architecture, failure modes, and roadmap.
+
+---
 
 ## 🔧 Configuration
 
-### Switching AI Models
+**`backend/app/core/config.py`** manages settings. You can override these with environment variables.
 
-Edit `backend/app/core/config.py`:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | OpenAI API Key | Required |
+| `ACTIVE_MODEL` | Model to use (`openai` or `mistral`) | `openai` |
+| `UPLOAD_DIR` | Directory for temp files | `uploads` |
+| `MAX_FILE_SIZE_MB` | Max file size in MB | `50` |
 
-```python
-active_model: str = "openai"  # Change to "mistral" for Mistral
-```
-
-Restart the backend server for changes to take effect.
-
-### Langfuse Integration
-
-To enable Langfuse tracking, update your keys in `backend/app/core/config.py`:
-
-```python
-langfuse_public_key: str = "pk-..."
-langfuse_secret_key: str = "sk-..."
-langfuse_host: str = "https://cloud.langfuse.com"
-```
-
-## 🐛 Troubleshooting
-
-**Backend won't start:**
-- Ensure all dependencies are installed: `pip install -r requirements.txt`
-- Check that API keys are configured correctly
-- Verify Python version is 3.9+
-
-**Frontend won't start:**
-- Run `npm install` to install dependencies
-- Ensure Node.js 18+ is installed
-- Check that backend is running on port 8000
-
-**Upload fails:**
-- Verify file is `.xlsx` or `.xls` format
-- Check file size is under 50MB
-- Ensure backend is running
-
-**No answer returned:**
-- Check API keys are valid
-- Ensure files were uploaded successfully
-- View backend logs for errors
-
-## 📝 API Documentation
-
-Once the backend is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
 
 ## 📄 License
 
-MIT License - feel free to use this project for any purpose.
-
-## 🙏 Acknowledgments
-
-- FastAPI
-- LangChain & LangGraph
-- OpenAI & Mistral AI
-- React
-- Rich (Python logging)
-- Langfuse
+Distributed under the MIT License. See `LICENSE` for more information.

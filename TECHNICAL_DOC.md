@@ -1,143 +1,240 @@
-# Technical Document - AskMyDoc
+# Technical Documentation - AskMyDoc
 
-**Version:** 1.0.0  
+**Version:** 2.1.0  
 **Date:** December 2024  
-**Author:** AI Document Assistant Team
+**Status:** Stable with Comprehensive Test Coverage (Pre‑Production)
 
 ---
 
 ## 1. Architecture Overview
 
-### System Components
+### System Architecture
 
-The AskMyDoc system consists of three main components:
+AskMyDoc is a full-stack AI-powered document assistant that enables natural language querying of Excel data. The system employs a modern three-tier architecture with a thin React frontend, a FastAPI backend responsible for orchestration and data processing, and an AI layer (LangChain + LangGraph + OpenAI) that handles reasoning and tool invocation.
 
-#### 1.1 Backend (FastAPI + Python)
-- **Web Framework**: FastAPI for REST API
-- **Data Processing**: pandas + openpyxl for Excel file handling
-- **Database**: SQLite for in-memory data storage and querying
-- **AI Framework**: LangChain + LangGraph for agent orchestration
-- **LLM Support**: OpenAI GPT-4 and Mistral Large (switchable)
-- **Monitoring**: Langfuse for AI agent tracking and observability
-- **Logging**: Rich library for beautiful console logs
+#### 1.1 Frontend Layer (React + Vite)
+- **Landing Page**: Beautiful, animated hero section with smooth transitions
+- **Chat Interface**: ChatGPT-style conversational UI with integrated file upload
+- **Sample Questions Dropdown**: Pre-populated questions for user guidance
+- **Real-time Feedback**: Loading states, progress indicators, error messages
+- **Modern UX**: Gradients, animations, hover effects for premium feel
 
-#### 1.2 Frontend (React)
-- **Framework**: React 18 with Vite build tool
-- **UI Components**: Custom-built file upload and chat interface
-- **API Client**: Axios for HTTP requests
-- **Styling**: Modern CSS with gradients and animations
+#### 1.2 Backend Layer (FastAPI + Python)
+- **REST API**: FastAPI-based async HTTP endpoints (`/upload`, `/query`, `/health`)
+- **Excel Processor**: `pandas` + `openpyxl` for file parsing and SQLite table creation
+- **AI Agent Orchestrator**: LangGraph-based ReAct agent with tool usage
+- **Database**: In-memory SQLite for fast, ephemeral querying
+- **Configuration**: Pydantic `BaseSettings` + `.env` (keys such as `OPENAI_API_KEY`)
+- **Monitoring**: Optional Langfuse integration for LLM observability
+- **Logging**: Rich library for structured, colorized console output
 
-#### 1.3 Data Flow
-
-```
-User Upload → FastAPI → Excel Processor → SQLite Database
-                ↓
-User Question → LangGraph Agent → Tools (SQL, Schema, etc.) → Response
-```
+#### 1.3 AI Layer (LangChain + LLMs)
+- **Primary Model**: OpenAI `gpt-4o-mini` (default), configured via `OPENAI_API_KEY` in `backend/.env`
+- **Optional Model**: Mistral (`mistral-large-latest`) path wired but disabled unless `MISTRAL_API_KEY` is provided
+- **Tool System**: Four specialized tools (`get_database_schema`, `execute_sql_query`, `preview_table`, `check_missing_values`)
+- **ReAct Pattern**: Reasoning and Acting loop for multi-step queries over SQL + tools
+- **State Management**: LangGraph `StateGraph` for the agent workflow and tool transitions
 
 ### Architecture Diagram (Conceptual)
 
+```mermaid
+graph TB
+    subgraph Frontend["Frontend (React + Vite)"]
+        LP[Landing Page<br/>Hero + Features]
+        CI[Chat Interface<br/>Upload + Q&A]
+        SD[Samples Dropdown<br/>💡 Questions]
+    end
+    
+    subgraph Backend["Backend (FastAPI)"]
+        UA[Upload API<br/>/upload/]
+        QA[Query API<br/>/query/]
+        EP[Excel Processor<br/>pandas + SQLite]
+        LA[LangGraph Agent<br/>ReAct Pattern]
+    end
+    
+    subgraph Data["Data Layer"]
+        DB[(SQLite<br/>In-Memory)]
+        FS[File Storage<br/>uploads/]
+    end
+    
+    subgraph AI["AI Services"]
+        OAI[OpenAI<br/>gpt-4o-mini]
+        MIS[Mistral<br/>Large (optional)]
+        LF[Langfuse<br/>Monitoring (optional)]
+    end
+    
+    subgraph Tools["LangChain Tools"]
+        T1[get_database_schema]
+        T2[execute_sql_query]
+        T3[preview_table]
+        T4[check_missing_values]
+    end
+    
+    LP --> CI
+    CI --> UA
+    CI --> QA
+    SD --> CI
+    
+    UA --> EP
+    EP --> DB
+    EP --> FS
+    
+    QA --> LA
+    LA --> Tools
+    Tools --> DB
+    LA --> OAI
+    LA --> MIS
+    LA --> LF
+    
+    style Frontend fill:#e1f5ff
+    style Backend fill:#fff3e0
+    style Data fill:#f3e5f5
+    style AI fill:#e8f5e9
+    style Tools fill:#fce4ec
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         Frontend (React)                     │
-│  ┌──────────────┐              ┌────────────────┐           │
-│  │ FileUpload   │              │ ChatInterface  │           │
-│  └──────────────┘              └────────────────┘           │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ HTTP/REST
-┌─────────────────────┴───────────────────────────────────────┐
-│                      Backend (FastAPI)                       │
-│  ┌──────────────┐              ┌────────────────┐           │
-│  │ Upload API   │              │ Query API      │           │
-│  └──────┬───────┘              └────────┬───────┘           │
-│         │                               │                   │
-│  ┌──────▼───────┐              ┌────────▼───────┐           │
-│  │ Excel        │              │ LangGraph      │           │
-│  │ Processor    │              │ Agent          │           │
-│  └──────┬───────┘              └────────┬───────┘           │
-│         │                               │                   │
-│  ┌──────▼───────────────────────────────▼───────┐           │
-│  │               SQLite Database                 │           │
-│  └───────────────────────────────────────────────┘           │
-│                                                              │
-│  ┌──────────────────────────────────────────────┐           │
-│  │  LangChain Tools (SQL, Schema, Missing)      │           │
-│  └──────────────────────────────────────────────┘           │
-└──────────────────────────────────────────────────────────────┘
-                      │
-                      ▼
-            ┌─────────────────┐
-            │  OpenAI/Mistral │
-            │      APIs       │
-            └─────────────────┘
+
+### Data Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 1. File Upload Flow                                     │
+├─────────────────────────────────────────────────────────┤
+│ User selects files → Frontend Upload                    │
+│         ↓                                               │
+│ POST /upload/ → FastAPI Endpoint                        │
+│         ↓                                               │
+│ Excel Processor reads sheets                            │
+│         ↓                                               │
+│ DataFrame → SQLite tables (in-memory)                   │
+│         ↓                                               │
+│ Return: {tables_created, row_count, status}             │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ 2. Query Flow                                           │
+├─────────────────────────────────────────────────────────┤
+│ User asks question → Chat Interface                     │
+│         ↓                                               │
+│ POST /query/ → FastAPI Endpoint                         │
+│         ↓                                               │
+│ LangGraph Agent receives question                       │
+│         ↓                                               │
+│ Agent uses tools:                                       │
+│   - get_database_schema (understand data)               │
+│   - execute_sql_query (run SQL)                         │
+│   - check_missing_values (data quality)                 │
+│         ↓                                               │
+│ LLM (OpenAI/Mistral) generates response                 │
+│         ↓                                               │
+│ Return: {answer, sql_queries, model}                    │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 2. Current Capabilities
 
-### 2.1 File Processing
-- ✅ **Multi-file upload**: Supports uploading multiple Excel files simultaneously
-- ✅ **Multiple sheets**: Reads all sheets from each Excel file
-- ✅ **Data conversion**: Converts DataFrame to SQL tables in SQLite
-- ✅ **Schema extraction**: Automatically extracts table schemas and metadata
+### 2.1 File Processing ✅
+- ✅ **Multi-file upload**: Handles multiple Excel files simultaneously
+- ✅ **Multi-sheet support**: Reads all sheets from each workbook
+- ✅ **Automatic table naming**: `filename_sheetname` convention
+- ✅ **Schema extraction**: Auto-detects columns, types, row counts
 - ✅ **Format support**: `.xlsx` and `.xls` files
+- ✅ **Progress indicators**: Real-time upload feedback
+- ✅ **Error handling**: Validates file types and handles corrupted files
 
-### 2.2 Question Answering
-- ✅ **Natural language queries**: Understands questions in plain English
-- ✅ **SQL generation**: Automatically generates SQL queries based on questions
-- ✅ **Aggregations**: Computes sums, averages, counts, groupings
-- ✅ **Comparisons**: Compares data across different time periods or categories
-- ✅ **Rankings**: Identifies top/bottom performers
-- ✅ **Data quality checks**: Detects missing values, duplicates, inconsistencies
+### 2.2 Natural Language Question Answering ✅
+- ✅ **Aggregations**: SUM, AVG, COUNT, GROUP BY operations
+- ✅ **Comparisons**: Time period comparisons, category comparisons
+- ✅ **Rankings**: TOP N queries, sorting, ordering
+- ✅ **Data Quality**: Missing value detection, inconsistency checks
+- ✅ **Multi-table queries**: Joins across uploaded files
+- ✅ **SQL transparency**: Shows generated SQL queries
+- ✅ **Model switching**: OpenAI GPT-4 or Mistral Large
 
-### 2.3 AI Agent Features
-- ✅ **Tool usage**: Agent uses multiple tools (schema inspection, SQL execution, data quality checks)
-- ✅ **ReAct pattern**: Agent reasons about the problem before taking action
-- ✅ **Multi-step reasoning**: Can combine multiple queries to answer complex questions
-- ✅ **Model flexibility**: Supports both OpenAI and Mistral (manual switch)
+### 2.3 AI Agent Features ✅
+- ✅ **ReAct Pattern**: Reasoning before action for tool selection and query planning
+- ✅ **Multi-step queries**: Combines multiple tools for complex questions over multiple files
+- ✅ **Tool usage**: 4 specialized tools (schema, SQL, preview, missing values)
+- ✅ **Error recovery**: Basic retries on SQL errors, with logging and partial results when possible
+- ✅ **State management**: LangGraph `StateGraph` for workflow and transitions between model ↔ tools
+- ✅ **Observability**: Optional Langfuse tracking for all LLM calls and tool runs
 
-### 2.4 User Interface
-- ✅ **Drag-and-drop upload**: Intuitive file upload interface
-- ✅ **Chat interface**: Conversational Q&A experience
-- ✅ **Example questions**: Pre-populated examples for quick testing
-- ✅ **SQL transparency**: Shows SQL queries used to generate answers
-- ✅ **Model indicator**: Displays which AI model generated the response
+### 2.4 User Interface ✅
+- ✅ **Beautiful landing page**: Animated hero section with gradient backgrounds
+- ✅ **ChatGPT-style interface**: Familiar conversational UX
+- ✅ **Integrated file upload**: 📎 button in chat input
+- ✅ **Sample questions dropdown**: 💡 button with 4 example queries
+- ✅ **Message types**: User, AI, System, Error with distinct styling
+- ✅ **Responsive design**: Works on desktop and tablet
+- ✅ **Smooth animations**: Fade-ins, slide-ins, floating cards
+- ✅ **Loading states**: Spinners during upload and query processing
 
-### 2.5 Monitoring & Logging
-- ✅ **Rich console logs**: Beautiful, color-coded logs with progress indicators
-- ✅ **Langfuse integration**: Tracks LLM calls, latency, and costs
-- ✅ **Action tracking**: Logs every step (file upload, query execution, tool usage)
+### 2.5 Testing & Quality Assurance ✅
+- ✅ **Integration test suite**: 5 comprehensive test cases
+- ✅ **Baseline capture**: All tests passing (100% success rate)
+- ✅ **Test automation**: pytest-based test runner
+- ✅ **Test data**: Organized in `tests/excels/` with 5 scenarios
+- ✅ **Continuous validation**: Run tests before deployment
+
+**Test Coverage:**
+1. Q1: Total revenue by country (multi-file aggregation)
+2. Q2: Highest margin product (comparative analysis)
+3. Q3: Q1 vs Q2 sales (time period comparison)
+4. Q4: Top 5 customers (ranking query)
+5. Q5: Missing values (data quality check)
+
+### 2.6 Monitoring & Observability ✅
+- ✅ **Rich console logs**: Color-coded, formatted output
+- ✅ **Progress indicators**: Spinners for long-running operations
+- ✅ **Langfuse integration**: LLM call tracking, cost monitoring
+- ✅ **Action logging**: Every step logged (upload, query, tool use)
+- ✅ **Error tracking**: Detailed error messages with stack traces
 
 ---
 
-## 3. Limitations and What is Not Implemented
+## 3. Limitations and What is NOT Implemented
 
-### 3.1 Data Persistence
-- ❌ **No permanent storage**: Uploaded files and database are in-memory only
-- ❌ **Session management**: No user sessions or authentication
-- ❌ **Database resets on restart**: All data is lost when server restarts
+### 3.1 Data Persistence ❌
+- ❌ **No permanent storage**: Database is in-memory (`:memory:`)
+- ❌ **No user sessions**: No authentication or user management
+- ❌ **Data loss on restart**: All uploaded data lost when server restarts
+- ❌ **No file history**: Cannot view previously uploaded files
 
-### 3.2 Scalability
-- ❌ **Single-threaded**: No async processing for large files
-- ❌ **Memory constraints**: Large files (>100MB) may cause memory issues
-- ❌ **No caching**: Repeated queries re-execute from scratch
+### 3.2 Scalability ❌
+- ❌ **Single-threaded processing**: Large files block the server
+- ❌ **Memory constraints**: Files >50MB may cause crashes
+- ❌ **No query caching**: Repeated queries re-execute
+- ❌ **No horizontal scaling**: Single server instance only
 
-### 3.3 Security
-- ❌ **No authentication**: Anyone with access can upload files and query
-- ❌ **No input validation**: Limited validation on file content
-- ❌ **No rate limiting**: No protection against API abuse
+### 3.3 Security ❌
+- ❌ **No authentication**: Open API, anyone can access
+- ❌ **No authorization**: No role-based access control
+- ❌ **No rate limiting**: Vulnerable to API abuse
+- ❌ **No input sanitization**: Limited SQL injection protection
+- ❌ **No HTTPS**: HTTP only (no TLS/SSL)
+- ❌ **No file scanning**: No virus/malware detection
 
-### 3.4 AI Capabilities
-- ❌ **No chart generation**: Cannot create visualizations
-- ❌ **No file editing**: Cannot modify or update Excel files
-- ❌ **No multi-document joins**: Limited ability to join across unrelated files
-- ❌ **No streaming responses**: Responses are batch, not streamed
+### 3.4 AI Capabilities ❌
+- ❌ **No streaming**: Batch responses only, no token streaming
+- ❌ **No visualization**: Cannot generate charts or graphs
+- ❌ **No file editing**: Read-only, cannot modify Excel files
+- ❌ **No export**: Cannot export answers as PDF/Excel
+- ❌ **No custom prompts**: Fixed system prompts
 
-### 3.5 Frontend
-- ❌ **No mobile optimization**: UI is desktop-focused
-- ❌ **No file preview**: Cannot preview Excel content before asking questions
-- ❌ **No export functionality**: Cannot export answers as PDF or Excel
+### 3.5 Frontend ❌
+- ❌ **No mobile optimization**: Desktop-focused UI
+- ❌ **No dark mode**: Light theme only
+- ❌ **No file preview**: Cannot view Excel content before querying
+- ❌ **No conversation history**: Chat resets on page refresh
+- ❌ **No copy/paste**: No easy way to copy answers
+
+### 3.6 Advanced Features ❌
+- ❌ **No time series analysis**: Limited temporal query support
+- ❌ **No predictive analytics**: No ML models beyond LLM
+- ❌ **No pivot tables**: No dynamic data reshaping
+- ❌ **No formula evaluation**: Cannot parse Excel formulas
+- ❌ **No multi-user collaboration**: Single-user only
 
 ---
 
@@ -145,204 +242,387 @@ User Question → LangGraph Agent → Tools (SQL, Schema, etc.) → Response
 
 ### 4.1 Common Failure Scenarios
 
-| Scenario | Cause | Symptom | Mitigation |
-|----------|-------|---------|------------|
-| **Upload Failure** | Invalid file format | "Invalid file type" error | Only upload `.xlsx` or `.xls` files |
-| **Query Timeout** | Complex SQL query | No response after 30s | Simplify question or break into parts |
-| **SQL Error** | Invalid table/column names | "SQL execution error" | Check schema with `getSchema()` tool |
-| **API Key Invalid** | Wrong/expired keys | 401 Unauthorized error | Update keys in `config.py` |
-| **Memory Error** | File too large | Server crash | Limit file size to <50MB |
-| **Model Hallucination** | Insufficient context | Incorrect answer | Provide more specific questions |
-| **Connection Lost** | Backend not running | "Network Error" in frontend | Restart backend server |
+| Failure Mode | Trigger | Symptom | User Impact | Mitigation |
+|--------------|---------|---------|-------------|------------|
+| **Upload Failure** | Invalid file format | "Invalid file type" error | Cannot upload files | Use `.xlsx` or `.xls` only |
+| **Memory Overflow** | File >50MB | Server crash / 500 error | Service unavailable | Limit file size |
+| **Query Timeout** | Complex multi-table join | No response after 60s | User frustration | Simplify question |
+| **SQL Error** | Invalid column name | "SQL execution error" | Incorrect answer | Check schema first |
+| **API Key Invalid** | Expired/wrong key | 401 Unauthorized | No AI responses | Update config.py |
+| **Model Hallucination** | Ambiguous question | Plausible but wrong answer | Data misinterpretation | Ask more specific questions |
+| **Connection Lost** | Backend offline | "Network Error" in UI | Cannot use app | Restart backend |
+| **Race Condition** | Multiple uploads | Data from wrong file | Incorrect results | Upload one at a time |
+| **LLM Rate Limit** | Too many requests | 429 Too Many Requests | Service degradation | Wait and retry |
 
-### 4.2 Error Handling
+### 4.2 Error Handling Strategy
 
-The system includes error handling at multiple levels:
-- **Frontend**: Displays user-friendly error messages
-- **API**: Returns structured error responses with details
-- **Agent**: Catches tool execution errors and retries
-- **Logging**: All errors are logged with Rich formatting
+**Frontend:**
+- Displays user-friendly error messages
+- Retries failed requests (3 attempts max)
+- Validates file types before upload
+- Shows loading states during processing
+
+**Backend:**
+- Structured error responses (JSON with `detail` field)
+- Try-catch blocks around critical operations
+- Logs all errors with Rich formatting
+- Returns appropriate HTTP status codes (400, 500, etc.)
+
+**AI Agent:**
+- Catches tool execution errors
+- Retries with different strategy on SQL errors
+- Graceful degradation (partial answers if possible)
+- Logs all tool calls and errors to Langfuse
+
+### 4.3 Data Loss Scenarios
+
+| Scenario | Probability | Impact | Recovery |
+|----------|-------------|--------|----------|
+| Server restart | Medium | Total data loss | Re-upload files |
+| Memory overflow | Low | Server crash | Restart server |
+| Browser refresh | High | Chat history lost | N/A (expected) |
+| Network failure | Medium | Request lost | Retry upload/query |
 
 ---
 
 ## 5. Productionization Roadmap
 
-### Phase 1: Foundation (2-3 days)
-- **Database Migration**: 
-  - Replace SQLite in-memory with PostgreSQL
-  - Implement database migrations (Alembic)
-  - Add connection pooling
-  - **Estimate**: 1 day
+### Phase 1: Data Persistence & Security (3–4 days)
 
-- **File Storage**:
-  - Implement cloud storage (AWS S3 or Google Cloud Storage)
-  - Add file versioning
-  - **Estimate**: 1 day
+#### 5.1 Database Migration (1.5 days)
+**Current:** SQLite in-memory  
+**Target:** PostgreSQL with persistent storage
 
-- **Authentication**:
-  - Add JWT-based authentication
-  - Implement user roles (admin, user)
-  - **Estimate**: 1 day
+**Tasks:**
+- Set up PostgreSQL instance (local/cloud)
+- Implement database migrations (Alembic)
+- Add connection pooling (SQLAlchemy)
+- Migrate table creation logic
+- Add database cleanup jobs
+- **Estimate**: 1.5 days
 
-### Phase 2: Performance & Reliability (3-4 days)
-- **Caching**:
-  - Add Redis for query result caching
-  - Cache LLM responses for common questions
-  - **Estimate**: 1 day
+#### 5.2 File Storage (1 day)
+**Current:** Local uploads/ directory  
+**Target:** Cloud storage (AWS S3 / Google Cloud Storage)
 
-- **Async Processing**:
-  - Implement background job queue (Celery)
-  - Async file processing for large files
-  - **Estimate**: 1 day
+**Tasks:**
+- Implement S3/GCS client
+- Add file upload to cloud
+- Add file versioning
+- Implement signed URLs for download
+- **Estimate**: 1 day
 
-- **Error Recovery**:
-  - Add retry logic with exponential backoff
-  - Implement circuit breakers for external APIs
-  - **Estimate**: 1 day
+#### 5.3 Authentication & Authorization (1.5 days)
+**Current:** Open API  
+**Target:** JWT-based auth with user roles
 
-- **Monitoring**:
-  - Add Prometheus metrics
-  - Set up Grafana dashboards
-  - **Estimate**: 0.5 day
+**Tasks:**
+- Implement user registration/login
+- Add JWT token generation/validation
+- Create user roles (admin, user, guest)
+- Protect API endpoints
+- Add password hashing (bcrypt)
+- **Estimate**: 1.5 days
 
-### Phase 3: Features & UX (2-3 days)
-- **Streaming Responses**:
-  - Implement WebSocket for real-time updates
-  - Stream LLM responses token-by-token
-  - **Estimate**: 1 day
-
-- **Visualization**:
-  - Add chart generation (Plotly)
-  - Export answers as PDF
-  - **Estimate**: 1 day
-
-- **Advanced Queries**:
-  - Support for JOIN operations across files
-  - Time series analysis
-  - **Estimate**: 1 day
-
-### Phase 4: Deployment (1-2 days)
-- **Containerization**:
-  - Create Docker images for frontend and backend
-  - Docker Compose for local development
-  - **Estimate**: 0.5 day
-
-- **Cloud Deployment**:
-  - Deploy to AWS ECS or GCP Cloud Run
-  - Set up load balancer
-  - Configure auto-scaling
-  - **Estimate**: 1 day
-
-- **CI/CD**:
-  - Set up GitHub Actions for automated testing
-  - Automated deployment pipeline
-  - **Estimate**: 0.5 day
-
-**Total Estimated Timeline**: 8-12 days
+**Phase 1 Total**: 4 days
 
 ---
 
-## 6. Testing Criteria
+### Phase 2: Performance & Reliability (3–4 days)
 
-### 6.1 Functional Testing
+#### 5.4 Caching Layer (1 day)
+**Current:** No caching  
+**Target:** Redis for query result caching
 
-**Test Cases**:
+**Tasks:**
+- Set up Redis instance
+- Cache LLM responses (by question hash)
+- Cache SQL query results
+- Implement cache invalidation logic
+- **Estimate**: 1 day
 
-| ID | Test | Expected Result | Status |
-|----|------|----------------|--------|
-| T1 | Upload single Excel file | File loads, tables created | ✅ |
-| T2 | Upload multiple Excel files | All files load correctly | ✅ |
-| T3 | Upload file with multiple sheets | All sheets become separate tables | ✅ |
-| T4 | Ask aggregation question (Q1) | Correct total revenue by country | ⏳ |
-| T5 | Ask comparison question (Q3) | Accurate Q1 vs Q2 comparison | ⏳ |
-| T6 | Ask ranking question (Q4) | Top 5 customers identified | ⏳ |
-| T7 | Ask data quality question (Q5) | Missing values detected | ⏳ |
-| T8 | Invalid file upload | Error message displayed | ✅ |
-| T9 | Empty question submission | No action taken | ✅ |
-| T10 | Switch models (OpenAI ↔ Mistral) | Both models work | ⏳ |
+#### 5.5 Async Processing (1.5 days)
+**Current:** Synchronous file processing  
+**Target:** Background job queue (Celery + Redis)
 
-### 6.2 Performance Testing
+**Tasks:**
+- Set up Celery workers
+- Implement async file upload processing
+- Add job status tracking
+- WebSocket for progress updates
+- **Estimate**: 1.5 days
 
-- **Latency**: Response time < 10 seconds for typical questions
-- **File size**: Handle files up to 50MB
-- **Concurrent users**: Support 10 simultaneous users (current: 1)
+#### 5.6 Error Recovery & Resilience (1 day)
+**Current:** Basic try-catch  
+**Target:** Comprehensive retry logic
 
-### 6.3 Integration Testing
+**Tasks:**
+- Add exponential backoff for LLM calls
+- Implement circuit breakers for external APIs
+- Add health checks
+- Graceful degradation strategies
+- **Estimate**: 1 day
 
-Test the full pipeline:
-1. Upload `tests/excels/` files
-2. Ask all 5 example questions
-3. Verify answers match expected results
-4. Check Langfuse logs for completeness
+#### 5.7 Monitoring & Alerting (0.5 day)
+**Current:** Langfuse only  
+**Target:** Full observability stack
 
-### 6.4 Testing Solution
+**Tasks:**
+- Add Prometheus metrics
+- Set up Grafana dashboards
+- Configure alerting (PagerDuty/Slack)
+- **Estimate**: 0.5 day
 
-**Automated Test Script** (to be implemented):
-
-```python
-# tests/test_integration.py
-import pytest
-from app.core.excel_processor import ExcelProcessor
-from app.agents.document_agent import DocumentAgent
-
-def test_revenue_by_country():
-    processor = ExcelProcessor()
-    processor.load_excel_file("tests/excels/q1_revenue_by_country/sales_2023.xlsx")
-    processor.load_excel_file("tests/excels/q1_revenue_by_country/sales_2024.xlsx")
-    
-    agent = DocumentAgent()
-    result = agent.query("Compute the total revenue per country across all files")
-    
-    assert "USA" in result["answer"]
-    assert len(result["sql_queries"]) > 0
-```
-
-Run tests:
-```bash
-pytest tests/
-```
+**Phase 2 Total**: 4 days
 
 ---
 
-## Appendix A: Technology Stack Details
+### Phase 3: Advanced Features (3–4 days)
+
+#### 5.8 Streaming Responses (1 day)
+**Current:** Batch responses  
+**Target:** Real-time token streaming
+
+**Tasks:**
+- Implement WebSocket in backend
+- Add streaming in LangGraph agent
+- Update frontend for SSE/WebSocket
+- Show typing indicators
+- **Estimate**: 1 day
+
+#### 5.9 Visualization & Export (1.5 days)
+**Current:** Text-only answers  
+**Target:** Charts and PDF export
+
+**Tasks:**
+- Integrate Plotly for chart generation
+- Add chart type detection logic
+- Implement PDF export (ReportLab)
+- Excel export functionality
+- **Estimate**: 1.5 days
+
+#### 5.10 Advanced Query Capabilities (1 day)
+**Current:** Basic SQL queries  
+**Target:** Complex joins and time series
+
+**Tasks:**
+- Improve multi-table JOIN logic
+- Add time series analysis tools
+- Support window functions
+- Add query optimization
+- **Estimate**: 1 day
+
+#### 5.11 Conversation History (0.5 day)
+**Current:** No history  
+**Target:** Persistent chat sessions
+
+**Tasks:**
+- Store conversations in database
+- Add session management
+- Implement chat history UI
+- **Estimate**: 0.5 day
+
+**Phase 3 Total**: 4 days
+
+---
+
+### Phase 4: Deployment & DevOps (2-3 days)
+
+#### 5.12 Containerization (0.5 day)
+**Tasks:**
+- Create Dockerfile for backend
+- Create Dockerfile for frontend
+- Docker Compose for local dev
+- Multi-stage builds for optimization
+- **Estimate**: 0.5 day
+
+#### 5.13 Cloud Deployment (1.5 days)
+**Tasks:**
+- Deploy to AWS ECS / GCP Cloud Run
+- Set up load balancer (ALB/Cloud Load Balancer)
+- Configure auto-scaling
+- Set up domain and SSL
+- **Estimate**: 1.5 days
+
+#### 5.14 CI/CD Pipeline (0.5 day)
+**Tasks:**
+- GitHub Actions for automated testing
+- Automated deployment on merge to main
+- Environment management (dev/staging/prod)
+- **Estimate**: 0.5 day
+
+#### 5.15 Security Hardening (0.5 day)
+**Tasks:**
+- Add rate limiting (e.g., 100 requests/hour)
+- Implement CORS properly
+- Add input sanitization
+- Security headers (HSTS, CSP, etc.)
+- **Estimate**: 0.5 day
+
+**Phase 4 Total**: 3 days
+
+---
+
+### Roadmap Summary
+
+| Phase | Focus | Duration | Priority |
+|-------|-------|----------|----------|
+| Phase 1 | Data Persistence & Security | 4 days | **High** |
+| Phase 2 | Performance & Reliability | 4 days | **High** |
+| Phase 3 | Advanced Features | 4 days | Medium |
+| Phase 4 | Deployment & DevOps | 3 days | **High** |
+
+**Total Estimated Timeline**: **12-15 days** (2-3 weeks)
+
+---
+
+## Appendix A: Technology Stack
 
 | Component | Technology | Version | Purpose |
-|-----------|-----------|---------|---------|
-| Backend Framework | FastAPI | 0.109.0 | REST API |
-| AI Orchestration | LangGraph | 0.0.20 | Agent workflows |
-| LLM Integration | LangChain | 0.1.6 | Tool abstractions |
-| Database | SQLite | 3.x | In-memory storage |
-| Excel Processing | pandas + openpyxl | 2.3.3 + 3.1.5 | Data manipulation |
-| Logging | Rich | 13.7.0 | Console logs |
+|-----------|------------|---------|---------|
+| **Backend** | | | |
+| Web Framework | FastAPI | 0.109.0 | REST API |
+| AI Agent | LangGraph | 0.0.20 | Agent workflows |
+| LLM Framework | LangChain | 0.1.6 | Tool abstractions |
+| Database | SQLite | 3.x | In-memory data storage |
+| Data Processing | pandas | 2.3.3 | DataFrame operations |
+| Excel Parsing | openpyxl | 3.1.5 | .xlsx file reading |
+| Logging | Rich | 13.7.0 | Console formatting |
 | Monitoring | Langfuse | 2.18.0 | LLM observability |
-| Frontend Framework | React | 18.2.0 | UI |
+| Testing | pytest | 8.4.2 | Test framework |
+| HTTP Client | requests | 2.32.5 | API testing |
+| **Frontend** | | | |
+| UI Framework | React | 18.2.0 | Component library |
 | Build Tool | Vite | 5.0.8 | Dev server & bundling |
 | HTTP Client | Axios | 1.6.0 | API requests |
+| Styling | CSS3 | - | Modern CSS with animations |
+| **AI Models** | | | |
+| Primary LLM | OpenAI GPT-4 | gpt-4-0125-preview | Default model |
+| Alternative LLM | Mistral Large | mistral-large-latest | Optional |
 
 ---
 
-## Appendix B: Configuration Reference
+## Appendix B: Test Suite Documentation
 
-### Backend Configuration (`app/core/config.py`)
+### Integration Tests (`backend/tests/test_baseline.py`)
+
+**Purpose**: Validate all critical user journeys work correctly
+
+**Test Cases:**
+
+1. **test_q1_revenue_by_country**
+   - Uploads: 2 files (sales_2023.xlsx, sales_2024.xlsx)
+   - Query: "Compute the total revenue per country across all files"
+   - Validates: Multi-file aggregation, country grouping
+   - Status: ✅ PASSING
+
+2. **test_q2_highest_margin**
+   - Uploads: Product files with margin data
+   - Query: "Which product has the highest average margin?"
+   - Validates: Average calculation, MAX selection
+   - Status: ✅ PASSING
+
+3. **test_q3_q1_vs_q2**
+   - Uploads: Quarterly sales data
+   - Query: "Compare sales between Q1 and Q2"
+   - Validates: Time period comparison, SUM operations
+   - Status: ✅ PASSING
+
+4. **test_q4_top_customers**
+   - Uploads: Customer transaction data
+   - Query: "List the top 5 customers by total spend"
+   - Validates: Ranking, ORDER BY, LIMIT
+   - Status: ✅ PASSING
+
+5. **test_q5_missing_values**
+   - Uploads: Inventory with gaps
+   - Query: "Highlight any missing values or inconsistencies"
+   - Validates: NULL detection, data quality tool
+   - Status: ✅ PASSING
+
+**Running Tests:**
+```bash
+cd backend
+source ../venv/bin/activate
+pytest tests/test_baseline.py -v -s
+```
+
+**Expected Output:**
+```
+============================= test session starts ==============================
+collected 5 items
+
+tests/test_baseline.py::TestBaselineCapture::test_q1_revenue_by_country PASSED
+tests/test_baseline.py::TestBaselineCapture::test_q2_highest_margin PASSED
+tests/test_baseline.py::TestBaselineCapture::test_q3_q1_vs_q2 PASSED
+tests/test_baseline.py::TestBaselineCapture::test_q4_top_customers PASSED
+tests/test_baseline.py::TestBaselineCapture::test_q5_missing_values PASSED
+
+======================== 5 passed in 55.00s =========================
+```
+
+---
+
+## Appendix C: Configuration Reference
+
+### Backend Configuration (`backend/app/core/config.py`)
 
 ```python
+from pydantic_settings import BaseSettings
+from pydantic import Field
+from functools import lru_cache
+from pathlib import Path
+
+
 class Settings(BaseSettings):
-    # API Keys
-    openai_api_key: str = "XXXX"
+    """Application settings - reads from backend/.env file"""
+    
+    # API Keys - reads from OPENAI_API_KEY in .env file
+    openai_api_key: str = Field(alias="OPENAI_API_KEY")
     mistral_api_key: str = "XXXX"
     
-    # Langfuse
+    # Langfuse Configuration
     langfuse_public_key: str = "XXXX"
     langfuse_secret_key: str = "XXXX"
     langfuse_host: str = "https://cloud.langfuse.com"
     
-    # Model Selection (MANUAL CHANGE REQUIRED)
-    active_model: str = "openai"  # or "mistral"
+    # Model Configuration - using OpenAI with gpt-4o-mini
+    active_model: str = "openai"  # Options: "openai" or "mistral"
     
-    # Application
+    # Application Settings
     upload_dir: str = "uploads"
     max_file_size_mb: int = 50
+    
+    class Config:
+        # Look for .env file in the backend directory
+        env_file = str(Path(__file__).parent.parent.parent / ".env")
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Get cached settings instance"""
+    return Settings()
 ```
+
+**To configure API keys:**
+1. Create or edit `backend/.env`
+2. Add your keys:
+   ```bash
+   OPENAI_API_KEY=sk-your-openai-key
+   # Optional:
+   MISTRAL_API_KEY=sk-your-mistral-key
+   LANGFUSE_PUBLIC_KEY=pk-...
+   LANGFUSE_SECRET_KEY=sk-...
+   LANGFUSE_HOST=https://cloud.langfuse.com
+   ```
+
+**To switch models:**
+1. Edit `backend/app/core/config.py`
+2. Change `active_model` to `"openai"` or `"mistral"`
+3. Ensure the corresponding API key is present in `.env`
+4. Restart the backend server
 
 ---
 
