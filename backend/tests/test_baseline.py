@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 # API Configuration
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = "http://localhost:5888"
 UPLOAD_ENDPOINT = f"{API_BASE_URL}/upload/"
 QUERY_ENDPOINT = f"{API_BASE_URL}/query/"
 

@@ -67,22 +67,22 @@ npm install
 ```bash
 cd backend
 source venv/bin/activate
-python -m uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 5888
 ```
-*Backend runs on `http://localhost:8000`*
+*Backend runs on `http://localhost:5888`*
 
 ### Start Frontend Client
 ```bash
 cd frontend
 npm run dev
 ```
-*Frontend runs on `http://localhost:3000`*
+*Frontend runs on `http://localhost:1566`*
 
 ---
 
 ## 📖 Usage Guide
 
-1. **Open App**: Go to `http://localhost:3000`.
+1. **Open App**: Go to `http://localhost:1566`.
 2. **Get Started**: Click the "Get Started" button on the landing page.
 3. **Upload Files**: 
    - Click the 📎 icon in the chat bar.
