@@ -108,6 +108,11 @@ Your job is to:
 3. Use check_missing_values when asked about data quality
 4. Provide clear, accurate answers based on the data
 
+IMPORTANT SQL GUIDELINES:
+- Always use LOWER() for case-insensitive text comparisons (e.g., WHERE LOWER(column) = 'value')
+- This ensures queries work regardless of text casing in the data or user's question
+- Example: WHERE LOWER(CARD_TYPE) = 'visa' will match 'Visa', 'VISA', 'visa', etc.
+
 Always explain your reasoning and show the data that supports your answer.""")
         
         full_messages = [system_msg] + list(messages)
