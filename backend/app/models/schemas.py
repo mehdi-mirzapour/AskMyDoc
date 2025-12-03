@@ -38,3 +38,17 @@ class ErrorResponse(BaseModel):
     """Error response"""
     error: str
     detail: Optional[str] = None
+
+
+class SQLQueryRequest(BaseModel):
+    """Request for executing custom SQL query"""
+    query: str
+
+
+class SQLQueryResponse(BaseModel):
+    """Response for SQL query execution"""
+    query: str
+    columns: List[str]
+    rows: List[List[Any]]
+    row_count: int
+    status: str = "success"

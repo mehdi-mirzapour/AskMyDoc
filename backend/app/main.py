@@ -29,6 +29,7 @@ tools.set_processor(excel_processor)
 
 # Set processors in routers
 upload.set_excel_processor(excel_processor)
+query.set_excel_processor(excel_processor)
 
 # Include routers
 app.include_router(upload.router)
