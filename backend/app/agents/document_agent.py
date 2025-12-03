@@ -113,6 +113,14 @@ IMPORTANT SQL GUIDELINES:
 - This ensures queries work regardless of text casing in the data or user's question
 - Example: WHERE LOWER(CARD_TYPE) = 'visa' will match 'Visa', 'VISA', 'visa', etc.
 
+CRITICAL - Aggregation Rules:
+- When asked about totals/sums for an entire table or time period, do NOT use GROUP BY
+- Example: "What is the total revenue for October 8?" → SELECT SUM(PRICE) FROM table_8oct (NO GROUP BY)
+- Only use GROUP BY when explicitly asked to break down by categories or compare groups
+- Example: "Revenue by product category" → SELECT category, SUM(price) FROM table GROUP BY category
+- Table names often indicate the time period (e.g., table_8oct = data for Oct 8), so sum the entire table
+- Date columns like DATE_OF_ORDER contain individual transaction timestamps, not the reporting period
+
 Always explain your reasoning and show the data that supports your answer.""")
         
         full_messages = [system_msg] + list(messages)
