@@ -12,9 +12,9 @@ class Settings(BaseSettings):
     mistral_api_key: str = "XXXX"
     
     # Langfuse Configuration
-    langfuse_public_key: str = "XXXX"
-    langfuse_secret_key: str = "XXXX"
-    langfuse_host: str = "https://cloud.langfuse.com"
+    langfuse_public_key: str = Field(default="XXXX", alias="LANGFUSE_PUBLIC_KEY")
+    langfuse_secret_key: str = Field(default="XXXX", alias="LANGFUSE_SECRET_KEY")
+    langfuse_host: str = Field(default="https://cloud.langfuse.com", alias="LANGFUSE_BASE_URL")
     
     # Model Configuration - using OpenAI with gpt-4o-mini
     active_model: str = "openai"  # Options: "openai" or "mistral"

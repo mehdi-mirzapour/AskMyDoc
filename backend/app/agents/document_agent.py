@@ -6,6 +6,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolExecutor, ToolInvocation
 from langgraph.graph.message import add_messages
 from langfuse.callback import CallbackHandler as LangfuseHandler
+from langfuse import Langfuse
 from app.core.config import get_settings
 from app.core.logger import logger
 from app.agents.tools import tools
@@ -25,17 +26,24 @@ class DocumentAgent:
         """Initialize the agent"""
         settings = get_settings()
         
-        # Initialize Langfuse callback handler
+        # Initialize Langfuse callback handler and client
         try:
             self.langfuse_handler = LangfuseHandler(
                 public_key=settings.langfuse_public_key,
                 secret_key=settings.langfuse_secret_key,
                 host=settings.langfuse_host
             )
-            logger.info("[bold green]✓ Langfuse integration enabled[/bold green]", extra={"markup": True})
+            # Initialize Langfuse client for manual tracing
+            self.langfuse_client = Langfuse(
+                public_key=settings.langfuse_public_key,
+                secret_key=settings.langfuse_secret_key,
+                host=settings.langfuse_host
+            )
+            logger.info("[bold green]✓ Langfuse integration enabled (with detailed tracing)[/bold green]", extra={"markup": True})
         except Exception as e:
             logger.warning(f"[yellow]⚠ Could not initialize Langfuse: {e}[/yellow]", extra={"markup": True})
             self.langfuse_handler = None
+            self.langfuse_client = None
         
         # Initialize LLM based on active model
         self.active_model = settings.active_model
@@ -99,6 +107,15 @@ class DocumentAgent:
         """Call the LLM"""
         messages = state["messages"]
         
+        # Create span for agent node execution if tracing is enabled
+        span = None
+        if self.langfuse_client and hasattr(self, '_current_trace'):
+            span = self._current_trace.span(
+                name="agent_reasoning",
+                input={"messages": [str(m) for m in messages]},
+                metadata={"node": "agent", "iteration": len([m for m in messages if isinstance(m, AIMessage)])}
+            )
+        
         # Add system message with context
         system_msg = SystemMessage(content="""You are a helpful data analyst assistant. You have access to a database containing Excel data.
         
@@ -128,6 +145,12 @@ Always explain your reasoning and show the data that supports your answer.""")
         # Call LLM with Langfuse callback
         callbacks = [self.langfuse_handler] if self.langfuse_handler else []
         response = self.llm_with_tools.invoke(full_messages, config={"callbacks": callbacks})
+        
+        # End span if created
+        if span:
+            span.end(
+                output={"response": str(response), "has_tool_calls": bool(self._get_tool_calls(response))}
+            )
         
         return {"messages": [response]}
     
@@ -160,12 +183,30 @@ Always explain your reasoning and show the data that supports your answer.""")
             logger.warning("[yellow]⚠ No tool calls found in message[/yellow]", extra={"markup": True})
             return {"messages": [], "sql_queries": state.get("sql_queries", [])}
         
+        # Create span for tools node if tracing is enabled
+        tools_span = None
+        if self.langfuse_client and hasattr(self, '_current_trace'):
+            tools_span = self._current_trace.span(
+                name="tools_execution",
+                input={"tool_calls": [tc['name'] for tc in tool_calls]},
+                metadata={"node": "tools", "num_tools": len(tool_calls)}
+            )
+        
         # Execute each tool
         outputs = []
         sql_queries = state.get("sql_queries", [])
         
         for tool_call in tool_calls:
             logger.info(f"[bold magenta]⚙️  Executing tool:[/bold magenta] {tool_call['name']}", extra={"markup": True})
+            
+            # Create span for individual tool execution
+            tool_span = None
+            if tools_span:
+                tool_span = tools_span.span(
+                    name=f"tool_{tool_call['name']}",
+                    input=tool_call['args'],
+                    metadata={"tool_name": tool_call['name']}
+                )
             
             # Track SQL queries
             if tool_call['name'] == 'execute_sql_query':
@@ -178,6 +219,14 @@ Always explain your reasoning and show the data that supports your answer.""")
             )
             tool_output = self.tool_executor.invoke(tool_invocation)
             outputs.append(tool_output)
+            
+            # End tool span
+            if tool_span:
+                tool_span.end(output=str(tool_output)[:500])  # Truncate long outputs
+        
+        # End tools node span
+        if tools_span:
+            tools_span.end(output={"num_results": len(outputs)})
         
         # Create tool messages
         tool_messages = [
@@ -213,15 +262,47 @@ Always explain your reasoning and show the data that supports your answer.""")
         """
         logger.info(f"[bold yellow]❓ Processing question:[/bold yellow] {question}", extra={"markup": True})
         
+        # Create Langfuse trace for the entire query
+        trace = None
+        if self.langfuse_client:
+            trace = self.langfuse_client.trace(
+                name="agent_query",
+                input={"question": question},
+                metadata={
+                    "model": self.active_model,
+                    "agent_type": "langgraph_document_agent"
+                }
+            )
+        
         # Create initial state
         initial_state = {
             "messages": [HumanMessage(content=question)],
             "sql_queries": []
         }
         
+        # Store trace as instance variable for access in node methods
+        if trace:
+            self._current_trace = trace
+        
         # Run the graph
         try:
+            # Create span for graph execution
+            graph_span = None
+            if trace:
+                graph_span = trace.span(
+                    name="graph_execution",
+                    input={"initial_state": {"question": question}}
+                )
+            
             final_state = self.graph.invoke(initial_state)
+            
+            if graph_span:
+                graph_span.end(
+                    output={
+                        "num_messages": len(final_state["messages"]),
+                        "sql_queries_executed": len(final_state.get("sql_queries", []))
+                    }
+                )
             
             # Extract answer from final message
             answer = final_state["messages"][-1].content
@@ -229,14 +310,40 @@ Always explain your reasoning and show the data that supports your answer.""")
             
             logger.info("[bold green]✓ Question answered successfully[/bold green]", extra={"markup": True})
             
-            return {
+            result = {
                 "answer": answer,
                 "sql_queries": sql_queries,
                 "model": self.active_model
             }
             
+            # End trace with result
+            if trace:
+                trace.update(
+                    output=result,
+                    metadata={
+                        "model": self.active_model,
+                        "num_sql_queries": len(sql_queries),
+                        "status": "success"
+                    }
+                )
+            
+            # Flush Langfuse to ensure trace is sent
+            if self.langfuse_client:
+                self.langfuse_client.flush()
+            
+            return result
+            
         except Exception as e:
             logger.error(f"[bold red]✗ Error processing question:[/bold red] {e}", extra={"markup": True})
+            
+            # Update trace with error
+            if trace:
+                trace.update(
+                    output={"error": str(e)},
+                    metadata={"status": "error"}
+                )
+                self.langfuse_client.flush()
+            
             raise
 
 
