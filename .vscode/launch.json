@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Debug Backend (FastAPI)",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--reload",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000"
+            ],
+            "jinja": true,
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/backend",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            }
+        },
+        {
+            "name": "Python: Debug Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/backend",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            }
+        }
+    ]
+}

@@ -54,8 +54,13 @@ class ExcelProcessor:
                     df = pd.read_excel(excel_file, sheet_name=sheet_name)
                     
                     # Create table name: filename_sheetname
-                    base_name = file_path.stem.replace(' ', '_').replace('-', '_')
-                    clean_sheet = sheet_name.replace(' ', '_').replace('-', '_')
+                    # Sanitize names to remove dots and special characters
+                    import re
+                    def clean_name(n):
+                        return re.sub(r'[^a-zA-Z0-9_]', '_', n)
+                    
+                    base_name = clean_name(file_path.stem)
+                    clean_sheet = clean_name(sheet_name)
                     table_name = f"{base_name}_{clean_sheet}".lower()
                     
                     # Save to SQLite

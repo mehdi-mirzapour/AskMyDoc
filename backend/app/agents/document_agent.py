@@ -126,17 +126,23 @@ Your job is to:
 4. Provide clear, accurate answers based on the data
 
 IMPORTANT SQL GUIDELINES:
-- Always use LOWER() for case-insensitive text comparisons (e.g., WHERE LOWER(column) = 'value')
-- This ensures queries work regardless of text casing in the data or user's question
-- Example: WHERE LOWER(CARD_TYPE) = 'visa' will match 'Visa', 'VISA', 'visa', etc.
+1. QUOTING RULES (CRITICAL):
+- ALWAYS wrap table and column names in double quotes
+- Example: SELECT "Employee Name" FROM "employee.data"
+- Required because table names may contain dots or special characters
+- Do not quote SQL keywords
 
-CRITICAL - Aggregation Rules:
+2. Aggregation Rules:
 - When asked about totals/sums for an entire table or time period, do NOT use GROUP BY
-- Example: "What is the total revenue for October 8?" → SELECT SUM(PRICE) FROM table_8oct (NO GROUP BY)
+- Example: "What is the total revenue for October 8?" → SELECT SUM(PRICE) FROM "table_8oct" (NO GROUP BY)
 - Only use GROUP BY when explicitly asked to break down by categories or compare groups
-- Example: "Revenue by product category" → SELECT category, SUM(price) FROM table GROUP BY category
+- Example: "Revenue by product category" → SELECT category, SUM(price) FROM "table" GROUP BY category
 - Table names often indicate the time period (e.g., table_8oct = data for Oct 8), so sum the entire table
 - Date columns like DATE_OF_ORDER contain individual transaction timestamps, not the reporting period
+
+3. Text Comparisons:
+- Always use LOWER() for case-insensitive text comparisons (e.g., WHERE LOWER("column") = 'value')
+- This ensures queries work regardless of text casing in the data or user's question
 
 Always explain your reasoning and show the data that supports your answer.""")
         
@@ -197,7 +203,7 @@ Always explain your reasoning and show the data that supports your answer.""")
         sql_queries = state.get("sql_queries", [])
         
         for tool_call in tool_calls:
-            logger.info(f"[bold magenta]⚙️  Executing tool:[/bold magenta] {tool_call['name']}", extra={"markup": True})
+            logger.info(f"[bold magenta]⚙️  Executing tool:[/bold magenta] {tool_call['name']} args={tool_call['args']}", extra={"markup": True})
             
             # Create span for individual tool execution
             tool_span = None
