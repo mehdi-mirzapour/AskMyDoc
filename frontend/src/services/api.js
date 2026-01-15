@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5888';
+// Use relative URLs - nginx will route /api/* to backend
+const API_BASE_URL = '/api';
+
 
 export const uploadFiles = async (files) => {
     const formData = new FormData();
