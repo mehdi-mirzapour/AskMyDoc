@@ -23,6 +23,7 @@ class Settings(BaseSettings):
         env_file = str(Path(__file__).parent.parent.parent / ".env")
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra fields like old Langfuse vars
 
 
 @lru_cache()
