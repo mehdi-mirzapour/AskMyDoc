@@ -25,7 +25,6 @@ AskMyDoc is a full-stack AI-powered document assistant that enables natural lang
 - **AI Agent Orchestrator**: LangGraph-based ReAct agent with tool usage
 - **Database**: In-memory SQLite for fast, ephemeral querying
 - **Configuration**: Pydantic `BaseSettings` + `.env` (keys such as `OPENAI_API_KEY`)
-- **Monitoring**: Optional Langfuse integration for LLM observability
 - **Logging**: Rich library for structured, colorized console output
 
 #### 1.3 AI Layer (LangChain + LLMs)
@@ -60,7 +59,7 @@ graph TB
     subgraph AI["AI Services"]
         OAI["OpenAI<br/>gpt-4o-mini"]
         MIS["Mistral<br/>Large (optional)"]
-        LF["Langfuse<br/>Monitoring (optional)"]
+
     end
     
     subgraph Tools["LangChain Tools"]
@@ -84,7 +83,7 @@ graph TB
     Tools --> DB
     LA --> OAI
     LA --> MIS
-    LA --> LF
+
     
     style Frontend fill:#e1f5ff
     style Backend fill:#fff3e0
@@ -158,7 +157,7 @@ graph TB
 - ✅ **Tool usage**: 4 specialized tools (schema, SQL, preview, missing values)
 - ✅ **Error recovery**: Basic retries on SQL errors, with logging and partial results when possible
 - ✅ **State management**: LangGraph `StateGraph` for workflow and transitions between model ↔ tools
-- ✅ **Observability**: Optional Langfuse tracking for all LLM calls and tool runs
+
 
 ### 2.4 User Interface ✅
 - ✅ **Beautiful landing page**: Animated hero section with gradient backgrounds
@@ -187,7 +186,7 @@ graph TB
 ### 2.6 Monitoring & Observability ✅
 - ✅ **Rich console logs**: Color-coded, formatted output
 - ✅ **Progress indicators**: Spinners for long-running operations
-- ✅ **Langfuse integration**: LLM call tracking, cost monitoring
+
 - ✅ **Action logging**: Every step logged (upload, query, tool use)
 - ✅ **Error tracking**: Detailed error messages with stack traces
 
@@ -272,7 +271,7 @@ graph TB
 - Catches tool execution errors
 - Retries with different strategy on SQL errors
 - Graceful degradation (partial answers if possible)
-- Logs all tool calls and errors to Langfuse
+- Logs all tool calls and errors
 
 ### 4.3 Data Loss Scenarios
 
@@ -488,7 +487,7 @@ graph TB
 | Data Processing | pandas | 2.3.3 | DataFrame operations |
 | Excel Parsing | openpyxl | 3.1.5 | .xlsx file reading |
 | Logging | Rich | 13.7.0 | Console formatting |
-| Monitoring | Langfuse | 2.18.0 | LLM observability |
+
 | Testing | pytest | 8.4.2 | Test framework |
 | HTTP Client | requests | 2.32.5 | API testing |
 | **Frontend** | | | |
@@ -581,10 +580,6 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(alias="OPENAI_API_KEY")
     mistral_api_key: str = "XXXX"
     
-    # Langfuse Configuration
-    langfuse_public_key: str = "XXXX"
-    langfuse_secret_key: str = "XXXX"
-    langfuse_host: str = "https://cloud.langfuse.com"
     
     # Model Configuration - using OpenAI with gpt-4o-mini
     active_model: str = "openai"  # Options: "openai" or "mistral"
@@ -613,10 +608,7 @@ def get_settings() -> Settings:
    OPENAI_API_KEY=sk-your-openai-key
    # Optional:
    MISTRAL_API_KEY=sk-your-mistral-key
-   LANGFUSE_PUBLIC_KEY=pk-...
-   LANGFUSE_SECRET_KEY=sk-...
-   LANGFUSE_HOST=https://cloud.langfuse.com
-   ```
+    ```
 
 **To switch models:**
 1. Edit `backend/app/core/config.py`
