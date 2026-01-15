@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.excel_processor import ExcelProcessor
 from app.agents import tools
-from app.api import upload, query
+from app.api import upload, query, agent_excel
 from app.core.logger import logger, console
 from app.core.config import get_settings
 from rich.panel import Panel
@@ -30,10 +30,12 @@ tools.set_processor(excel_processor)
 # Set processors in routers
 upload.set_excel_processor(excel_processor)
 query.set_excel_processor(excel_processor)
+agent_excel.set_excel_processor(excel_processor)
 
 # Include routers
 app.include_router(upload.router)
 app.include_router(query.router)
+app.include_router(agent_excel.router)
 
 
 @app.on_event("startup")

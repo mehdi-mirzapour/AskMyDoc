@@ -52,3 +52,20 @@ class SQLQueryResponse(BaseModel):
     rows: List[List[Any]]
     row_count: int
     status: str = "success"
+
+
+class AgentExcelRequest(BaseModel):
+    """Request for agent_excel endpoint"""
+    query: str
+    excel_urls: List[str]
+
+
+class AgentExcelResponse(BaseModel):
+    """Response for agent_excel endpoint"""
+    query: str
+    answer: str
+    sql_queries: Optional[List[str]] = None
+    model: str
+    files_processed: int
+    tables_created: List[str]
+    timestamp: datetime = datetime.now()
