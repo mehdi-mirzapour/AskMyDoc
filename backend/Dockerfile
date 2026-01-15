@@ -22,7 +22,7 @@ COPY . .
 RUN mkdir -p uploads
 
 # Expose port
-EXPOSE 5888
+EXPOSE 5882
 
 # Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5888"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5882"]
