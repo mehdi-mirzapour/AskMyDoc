@@ -23,7 +23,7 @@ jobs:
         run: |
           docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-backend:latest ./backend
           docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-frontend:latest ./frontend
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-nginx:latest ./nginx
+          docker build --build-arg CONFIG_FILE=nginx.azure.conf -t ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-nginx:latest ./nginx
 
       - name: Push Docker images to ACR
         run: |
