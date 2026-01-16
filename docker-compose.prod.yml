@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  backend:
+    image: ${ACR_LOGIN_SERVER}/askmydoc-backend:latest
+    container_name: askmydoc-backend-prod
+    ports:
+      - "5882:5882"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-XXXX}
+    volumes:
+      - ./backend/uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5882/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    image: ${ACR_LOGIN_SERVER}/askmydoc-frontend:latest
+    container_name: askmydoc-frontend-prod
+    ports:
+      - "5881:5881"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5881" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: ${ACR_LOGIN_SERVER}/askmydoc-nginx:latest
+    container_name: askmydoc-nginx-prod
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  uploads:

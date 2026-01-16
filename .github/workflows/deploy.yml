@@ -1,0 +1,74 @@
+name: Build and Deploy to Azure
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure Container Registry
+        run: |
+          echo ${{ secrets.ACR_PASSWORD }} | docker login \
+          ${{ secrets.ACR_LOGIN_SERVER }} \
+          -u ${{ secrets.ACR_USERNAME }} --password-stdin
+
+      - name: Build Docker images
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-backend:latest ./backend
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-frontend:latest ./frontend
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-nginx:latest ./nginx
+
+      - name: Push Docker images to ACR
+        run: |
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-backend:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-frontend:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/askmydoc-nginx:latest
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Prepare Azure Container Group definition
+        run: |
+          # Replace placeholders in YAML with actual values
+          sed -i "s|\${ACR_LOGIN_SERVER}|${{ secrets.ACR_LOGIN_SERVER }}|g" azure-container-group.yml
+          sed -i "s|\${ACR_USERNAME}|${{ secrets.ACR_USERNAME }}|g" azure-container-group.yml
+          sed -i "s|\${ACR_PASSWORD}|${{ secrets.ACR_PASSWORD }}|g" azure-container-group.yml
+          sed -i "s|\${OPENAI_API_KEY}|${{ secrets.OPENAI_API_KEY }}|g" azure-container-group.yml
+          sed -i "s|\${MISTRAL_API_KEY}|${{ secrets.MISTRAL_API_KEY }}|g" azure-container-group.yml
+          
+          # Show the final YAML for debugging
+          echo "=== Azure Container Group Configuration ==="
+          cat azure-container-group.yml
+
+      - name: Deploy to Azure Container Instances
+        run: |
+          # Delete existing container group if it exists
+          az container delete \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name askmydoc-app \
+            --yes || true
+          
+          # Wait a moment for deletion to complete
+          sleep 10
+          
+          # Create new container group from YAML
+          az container create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --file azure-container-group.yml
+
+      - name: Get deployment info
+        run: |
+          echo "=== Deployment Complete ==="
+          az container show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name askmydoc-app \
+            --query "{FQDN:ipAddress.fqdn,IP:ipAddress.ip,ProvisioningState:provisioningState}" \
+            --output table

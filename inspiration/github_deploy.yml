@@ -1,0 +1,59 @@
+name: Build and Push to ACR
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to ACR
+        run: |
+          echo ${{ secrets.ACR_PASSWORD }} | docker login \
+          ${{ secrets.ACR_LOGIN_SERVER }} \
+          -u ${{ secrets.ACR_USERNAME }} --password-stdin
+
+      - name: Build images
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/vivy-backend:latest backend
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/vivy-frontend:latest frontend
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/vivy-nginx:latest nginx
+
+      - name: Push images
+        run: |
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/vivy-backend:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/vivy-frontend:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/vivy-nginx:latest
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Prepare container group definition
+        run: |
+          # Replace placeholders in YAML
+          sed -i "s|\${ACR_LOGIN_SERVER}|${{ secrets.ACR_LOGIN_SERVER }}|g" azure-container-group.yml
+          sed -i "s|\${ACR_USERNAME}|${{ secrets.ACR_USERNAME }}|g" azure-container-group.yml
+          sed -i "s|\${ACR_PASSWORD}|${{ secrets.ACR_PASSWORD }}|g" azure-container-group.yml
+          
+          # Show the final YAML for debugging
+          cat azure-container-group.yml
+
+      - name: Deploy to Azure Container Instances
+        run: |
+          # Delete existing container group if it exists
+          az container delete \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name vivy-app \
+            --yes || true
+          
+          # Create container group from YAML
+          az container create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --file azure-container-group.yml
+

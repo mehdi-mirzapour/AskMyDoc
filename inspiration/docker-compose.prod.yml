@@ -1,0 +1,27 @@
+services:
+  backend:
+    image: ${ACR_LOGIN_SERVER}/vivy-backend:latest
+    ports:
+      - "5882:5882"
+    restart: always
+
+  frontend:
+    image: ${ACR_LOGIN_SERVER}/vivy-frontend:latest
+    volumes:
+      - frontend-dist:/app/dist
+    command: [ "tail", "-f", "/dev/null" ]
+    restart: unless-stopped
+
+  nginx:
+    image: ${ACR_LOGIN_SERVER}/vivy-nginx:latest
+    ports:
+      - "5881:80"
+    volumes:
+      - frontend-dist:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: always
+
+volumes:
+  frontend-dist:

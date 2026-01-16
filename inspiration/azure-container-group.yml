@@ -1,0 +1,72 @@
+apiVersion: 2019-12-01
+location: westeurope
+name: vivy-app
+properties:
+  containers:
+  - name: backend
+    properties:
+      image: ${ACR_LOGIN_SERVER}/vivy-backend:latest
+      resources:
+        requests:
+          cpu: 0.5
+          memoryInGb: 0.5
+      ports:
+      - port: 5882
+        protocol: TCP
+      environmentVariables: []
+  
+  - name: frontend
+    properties:
+      image: ${ACR_LOGIN_SERVER}/vivy-frontend:latest
+      resources:
+        requests:
+          cpu: 0.3
+          memoryInGb: 0.3
+      command:
+      - sh
+      - -c
+      - |
+        cp -r /app/dist/* /app/dist-volume/ 2>/dev/null || true
+        tail -f /dev/null
+      volumeMounts:
+      - name: frontend-dist
+        mountPath: /app/dist-volume
+  
+  - name: nginx
+    properties:
+      image: ${ACR_LOGIN_SERVER}/vivy-nginx:latest
+      resources:
+        requests:
+          cpu: 0.2
+          memoryInGb: 0.2
+      ports:
+      - port: 80
+        protocol: TCP
+      volumeMounts:
+      - name: frontend-dist
+        mountPath: /usr/share/nginx/html
+        readOnly: true
+  
+  imageRegistryCredentials:
+  - server: ${ACR_LOGIN_SERVER}
+    username: ${ACR_USERNAME}
+    password: ${ACR_PASSWORD}
+  
+  ipAddress:
+    type: Public
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 5882
+    dnsNameLabel: vivy-app
+  
+  osType: Linux
+  restartPolicy: Always
+  
+  volumes:
+  - name: frontend-dist
+    emptyDir: {}
+
+tags: {}
+type: Microsoft.ContainerInstance/containerGroups

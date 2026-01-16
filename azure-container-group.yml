@@ -1,0 +1,64 @@
+apiVersion: 2019-12-01
+location: westeurope
+name: askmydoc-app
+properties:
+  containers:
+  - name: backend
+    properties:
+      image: ${ACR_LOGIN_SERVER}/askmydoc-backend:latest
+      resources:
+        requests:
+          cpu: 1.0
+          memoryInGb: 1.0
+      ports:
+      - port: 5882
+        protocol: TCP
+      environmentVariables:
+      - name: OPENAI_API_KEY
+        secureValue: ${OPENAI_API_KEY}
+      - name: MISTRAL_API_KEY
+        secureValue: ${MISTRAL_API_KEY}
+  
+  - name: frontend
+    properties:
+      image: ${ACR_LOGIN_SERVER}/askmydoc-frontend:latest
+      resources:
+        requests:
+          cpu: 0.5
+          memoryInGb: 0.5
+      ports:
+      - port: 5881
+        protocol: TCP
+  
+  - name: nginx
+    properties:
+      image: ${ACR_LOGIN_SERVER}/askmydoc-nginx:latest
+      resources:
+        requests:
+          cpu: 0.5
+          memoryInGb: 0.5
+      ports:
+      - port: 80
+        protocol: TCP
+  
+  imageRegistryCredentials:
+  - server: ${ACR_LOGIN_SERVER}
+    username: ${ACR_USERNAME}
+    password: ${ACR_PASSWORD}
+  
+  ipAddress:
+    type: Public
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 5882
+    dnsNameLabel: askmydoc-app
+  
+  osType: Linux
+  restartPolicy: Always
+
+tags:
+  application: askmydoc
+  environment: production
+type: Microsoft.ContainerInstance/containerGroups

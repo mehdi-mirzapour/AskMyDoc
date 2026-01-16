@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "5882:5882"
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+    volumes:
+      - frontend-dist:/app/dist
+    command: [ "tail", "-f", "/dev/null" ]
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "5881:80"
+    volumes:
+      - frontend-dist:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: always
+
+volumes:
+  frontend-dist:
