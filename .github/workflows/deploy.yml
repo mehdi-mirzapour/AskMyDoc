@@ -65,7 +65,7 @@ jobs:
                 - name: OPENAI_API_KEY
                   secureValue: ${OPENAI_API_KEY}
                 - name: MISTRAL_API_KEY
-                  secureValue: ${MISTRAL_API_KEY}
+                  value: ${MISTRAL_API_KEY:-XXXX}
             
             - name: frontend
               properties:
