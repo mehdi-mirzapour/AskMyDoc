@@ -37,13 +37,84 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Prepare Azure Container Group definition
+        env:
+          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: |
-          # Replace placeholders in YAML with actual values
-          sed -i "s|\${ACR_LOGIN_SERVER}|${{ secrets.ACR_LOGIN_SERVER }}|g" azure-container-group.yml
-          sed -i "s|\${ACR_USERNAME}|${{ secrets.ACR_USERNAME }}|g" azure-container-group.yml
-          sed -i "s|\${ACR_PASSWORD}|${{ secrets.ACR_PASSWORD }}|g" azure-container-group.yml
-          sed -i "s|\${OPENAI_API_KEY}|${{ secrets.OPENAI_API_KEY }}|g" azure-container-group.yml
-          sed -i "s|\${MISTRAL_API_KEY}|${{ secrets.MISTRAL_API_KEY }}|g" azure-container-group.yml
+          # Create the container group YAML with actual values
+          cat > azure-container-group.yml << 'EOF'
+          apiVersion: 2019-12-01
+          location: westeurope
+          name: askmydoc-app
+          properties:
+            containers:
+            - name: backend
+              properties:
+                image: ${ACR_LOGIN_SERVER}/askmydoc-backend:latest
+                resources:
+                  requests:
+                    cpu: 1.0
+                    memoryInGb: 1.0
+                ports:
+                - port: 5882
+                  protocol: TCP
+                environmentVariables:
+                - name: OPENAI_API_KEY
+                  secureValue: ${OPENAI_API_KEY}
+                - name: MISTRAL_API_KEY
+                  secureValue: ${MISTRAL_API_KEY}
+            
+            - name: frontend
+              properties:
+                image: ${ACR_LOGIN_SERVER}/askmydoc-frontend:latest
+                resources:
+                  requests:
+                    cpu: 0.5
+                    memoryInGb: 0.5
+                ports:
+                - port: 5881
+                  protocol: TCP
+            
+            - name: nginx
+              properties:
+                image: ${ACR_LOGIN_SERVER}/askmydoc-nginx:latest
+                resources:
+                  requests:
+                    cpu: 0.5
+                    memoryInGb: 0.5
+                ports:
+                - port: 80
+                  protocol: TCP
+            
+            imageRegistryCredentials:
+            - server: ${ACR_LOGIN_SERVER}
+              username: ${ACR_USERNAME}
+              password: ${ACR_PASSWORD}
+            
+            ipAddress:
+              type: Public
+              ports:
+              - protocol: TCP
+                port: 80
+              - protocol: TCP
+                port: 5882
+              dnsNameLabel: askmydoc-app
+            
+            osType: Linux
+            restartPolicy: Always
+          
+          tags:
+            application: askmydoc
+            environment: production
+          type: Microsoft.ContainerInstance/containerGroups
+          EOF
+          
+          # Replace environment variables in the file
+          envsubst < azure-container-group.yml > azure-container-group-final.yml
+          mv azure-container-group-final.yml azure-container-group.yml
           
           # Show the final YAML for debugging
           echo "=== Azure Container Group Configuration ==="
