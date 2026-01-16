@@ -1,0 +1,96 @@
+openapi: 3.1.0
+
+info:
+  title: AskMyDoc Excel Agent API
+  version: 1.0.0
+  description: API for querying Excel files using natural language with ChatGPT file uploads.
+
+servers:
+  - url: https://askmydoc-app.westeurope.azurecontainer.io
+
+paths:
+  /api/agent_excel/:
+    post:
+      summary: Query Excel files from user uploads
+      operationId: queryExcelAgent
+      description: |
+        Analyzes Excel files uploaded by users in ChatGPT and answers questions using natural language.
+        Accepts up to 10 Excel files (.xlsx, .xls) via openaiFileIdRefs.
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+                - openaiFileIdRefs
+              properties:
+                openaiFileIdRefs:
+                  type: array
+                  description: |
+                    Array of file references from ChatGPT. Each file object contains:
+                    - name: filename
+                    - id: stable file identifier
+                    - mime_type: file MIME type
+                    - download_link: temporary URL (valid for 5 minutes)
+                    
+                    Only Excel files (.xlsx, .xls) are supported.
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 10
+
+                query:
+                  type: string
+                  description: Natural language question to ask about the Excel data
+                  example: "What is the total revenue across all files?"
+
+      responses:
+        "200":
+          description: Successful query response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                  answer:
+                    type: string
+                  sql_queries:
+                    type: array
+                    items:
+                      type: string
+                  model:
+                    type: string
+                  files_processed:
+                    type: integer
+                  tables_created:
+                    type: array
+                    items:
+                      type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string

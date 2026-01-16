@@ -25,15 +25,37 @@ async def process_excel_query(request: AgentExcelRequest):
     """Process Excel files from URLs and answer a query
     
     Args:
-        request: AgentExcelRequest with query and excel_urls
+        request: AgentExcelRequest with query and either excel_urls or openaiFileIdRefs
         
     Returns:
         AgentExcelResponse with answer and metadata
     """
-    logger.info(f"[bold blue]🔗 Agent Excel request:[/bold blue] {len(request.excel_urls)} URLs, Query: {request.query}", extra={"markup": True})
+    logger.info(f"[bold blue]🔗 Agent Excel request:[/bold blue] Query: {request.query}", extra={"markup": True})
     
-    if not request.excel_urls:
-        raise HTTPException(status_code=400, detail="No Excel URLs provided")
+    # Extract URLs from either excel_urls or openaiFileIdRefs
+    excel_urls = []
+    
+    if request.excel_urls:
+        excel_urls = request.excel_urls
+        logger.info(f"[cyan]📎 Using direct excel_urls:[/cyan] {len(excel_urls)} URLs", extra={"markup": True})
+    elif request.openaiFileIdRefs:
+        # Extract download_link from Custom GPT file objects
+        logger.info(f"[cyan]📎 Processing openaiFileIdRefs:[/cyan] {len(request.openaiFileIdRefs)} files", extra={"markup": True})
+        for file_ref in request.openaiFileIdRefs:
+            if isinstance(file_ref, dict):
+                # Extract download_link from file object
+                download_url = file_ref.get('download_link') or file_ref.get('download_url')
+                if download_url:
+                    excel_urls.append(download_url)
+                    logger.info(f"[green]✓ Extracted URL for:[/green] {file_ref.get('name', 'unknown')}", extra={"markup": True})
+                else:
+                    logger.warning(f"[yellow]⚠ No download_link found in file object[/yellow]", extra={"markup": True})
+            elif isinstance(file_ref, str):
+                # Direct URL string
+                excel_urls.append(file_ref)
+    
+    if not excel_urls:
+        raise HTTPException(status_code=400, detail="No Excel URLs provided. Use either excel_urls or openaiFileIdRefs.")
     
     if not request.query:
         raise HTTPException(status_code=400, detail="No query provided")
@@ -44,8 +66,8 @@ async def process_excel_query(request: AgentExcelRequest):
     try:
         # Download files from URLs
         async with httpx.AsyncClient(timeout=30.0) as client:
-            for idx, url in enumerate(request.excel_urls):
-                logger.info(f"[cyan]📥 Downloading file {idx + 1}/{len(request.excel_urls)}:[/cyan] {url}", extra={"markup": True})
+            for idx, url in enumerate(excel_urls):
+                logger.info(f"[cyan]📥 Downloading file {idx + 1}/{len(excel_urls)}:[/cyan] {url}", extra={"markup": True})
                 
                 try:
                     response = await client.get(url)
@@ -93,7 +115,7 @@ async def process_excel_query(request: AgentExcelRequest):
                 answer=result["answer"],
                 sql_queries=result.get("sql_queries"),
                 model=result["model"],
-                files_processed=len(request.excel_urls),
+                files_processed=len(excel_urls),
                 tables_created=all_tables,
                 timestamp=datetime.now()
             )

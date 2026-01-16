@@ -55,9 +55,15 @@ class SQLQueryResponse(BaseModel):
 
 
 class AgentExcelRequest(BaseModel):
-    """Request for agent_excel endpoint"""
+    """Request for agent_excel endpoint
+    
+    Supports two modes:
+    1. Custom GPT: openaiFileIdRefs with file objects containing download_link
+    2. Direct API: excel_urls with direct URLs
+    """
     query: str
-    excel_urls: List[str]
+    excel_urls: Optional[List[str]] = None
+    openaiFileIdRefs: Optional[List[Any]] = None  # Can be dict or string
 
 
 class AgentExcelResponse(BaseModel):
