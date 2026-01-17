@@ -43,9 +43,6 @@ jobs:
           ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
-          AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
-          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
         run: |
           # Create the container group YAML with actual values
           cat > azure-container-group.yml << 'EOF'
@@ -69,12 +66,6 @@ jobs:
                   secureValue: ${OPENAI_API_KEY}
                 - name: MISTRAL_API_KEY
                   value: ${MISTRAL_API_KEY:-XXXX}
-                - name: AZURE_STORAGE_ACCOUNT
-                  value: ${AZURE_STORAGE_ACCOUNT}
-                - name: AZURE_STORAGE_KEY
-                  secureValue: ${AZURE_STORAGE_KEY}
-                - name: AZURE_STORAGE_CONTAINER
-                  value: ${AZURE_STORAGE_CONTAINER:-excel-files}
             
             - name: frontend
               properties:
