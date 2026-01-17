@@ -13,9 +13,7 @@ paths:
     post:
       summary: Query Excel files from user uploads
       operationId: queryExcelAgent
-      description: |
-        Analyzes Excel files uploaded by users in ChatGPT and answers questions using natural language.
-        Accepts up to 10 Excel files (.xlsx, .xls) via openaiFileIdRefs.
+      description: Analyzes Excel files uploaded by users in ChatGPT and answers questions using natural language.
       
       requestBody:
         required: true
@@ -25,24 +23,18 @@ paths:
               type: object
               required:
                 - query
-                - openaiFileIdRefs
               properties:
-                openaiFileIdRefs:
-                  type: array
-                  description: |
-                    Attach up to 10 Excel files from the conversation.
-                    ChatGPT will automatically populate this with file references containing download links.
-                    Only Excel files (.xlsx, .xls) are supported.
-                  items:
-                    type: object
-                  x-openai-isConversationFileRefs: true
-                  minItems: 1
-                  maxItems: 10
-
                 query:
                   type: string
                   description: Natural language question to ask about the Excel data
                   example: "What is the total revenue across all files?"
+                
+                openaiFileIdRefs:
+                  type: array
+                  description: Attach up to 10 Excel files from the conversation. ChatGPT will automatically populate this with file references.
+                  items:
+                    type: object
+                  x-openai-isConversationFileRefs: true
 
       responses:
         "200":

@@ -1,0 +1,68 @@
+openapi: 3.1.0
+
+info:
+  title: AskMyDoc Excel Agent API
+  version: 1.0.0
+  description: API for querying Excel files using natural language.
+
+servers:
+  - url: https://askmydoc-app.westeurope.azurecontainer.io
+
+paths:
+  /api/agent_excel/:
+    post:
+      summary: Query Excel files
+      operationId: queryExcelAgent
+      description: Analyzes Excel files and answers questions. Supports up to 10 Excel files (.xlsx, .xls).
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: Natural language question about the Excel data
+                  example: "What is the total revenue?"
+                
+                openaiFileIdRefs:
+                  type: array
+                  description: |
+                    Excel files from the conversation. This parameter will be automatically populated 
+                    with file references when users upload Excel files. Each file reference includes 
+                    name, id, mime_type, and a temporary download_link (valid for 5 minutes).
+                  items:
+                    type: string
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answer:
+                    type: string
+                  query:
+                    type: string
+                  files_processed:
+                    type: integer
+                  sql_queries:
+                    type: array
+                    items:
+                      type: string
+
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
