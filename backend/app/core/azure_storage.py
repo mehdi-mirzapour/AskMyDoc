@@ -1,7 +1,15 @@
 """
 Azure Blob Storage utility for uploading files
 """
-from azure.storage.blob import BlobServiceClient, PublicAccess, ContentSettings
+try:
+    from azure.storage.blob import BlobServiceClient, PublicAccess, ContentSettings
+    AZURE_AVAILABLE = True
+except ImportError:
+    AZURE_AVAILABLE = False
+    BlobServiceClient = None
+    PublicAccess = None
+    ContentSettings = None
+
 from pathlib import Path
 import os
 from typing import Optional
