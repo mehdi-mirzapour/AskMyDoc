@@ -1,7 +1,15 @@
 """
 Azure Blob Storage utility for uploading files
 """
-from azure.storage.blob import BlobServiceClient, PublicAccess, ContentSettings
+try:
+    from azure.storage.blob import BlobServiceClient, PublicAccess, ContentSettings
+    AZURE_STORAGE_AVAILABLE = True
+except ImportError:
+    AZURE_STORAGE_AVAILABLE = False
+    BlobServiceClient = None
+    PublicAccess = None
+    ContentSettings = None
+
 from pathlib import Path
 import os
 from typing import Optional
@@ -17,10 +25,19 @@ class AzureStorageUploader:
     
     def __init__(self):
         """Initialize Azure Blob Storage client"""
+        # Check if Azure Storage SDK is available
+        if not AZURE_STORAGE_AVAILABLE:
+            logger.warning("[yellow]Azure Storage SDK not installed - storage endpoints disabled[/yellow]", extra={"markup": True})
+            self.blob_service_client = None
+            self.container_name = "excel-files"
+            return
+        
+        # Get configuration from environment
         self.storage_account = os.getenv("AZURE_STORAGE_ACCOUNT")
         self.storage_key = os.getenv("AZURE_STORAGE_KEY")
         self.container_name = os.getenv("AZURE_STORAGE_CONTAINER", "excel-files")
         
+        # Check if credentials are configured
         if not self.storage_account or not self.storage_key:
             logger.warning("[yellow]Azure Storage credentials not configured[/yellow]", extra={"markup": True})
             self.blob_service_client = None
@@ -34,6 +51,7 @@ class AzureStorageUploader:
             f"EndpointSuffix=core.windows.net"
         )
         
+        # Initialize client
         try:
             self.blob_service_client = BlobServiceClient.from_connection_string(connection_string)
             self._ensure_container_exists()

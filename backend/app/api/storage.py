@@ -4,7 +4,14 @@ API endpoint for uploading files to Azure Blob Storage
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import List
 from pydantic import BaseModel
-from app.core.azure_storage import get_uploader
+
+try:
+    from app.core.azure_storage import get_uploader
+    STORAGE_AVAILABLE = True
+except ImportError:
+    STORAGE_AVAILABLE = False
+    get_uploader = None
+
 from app.core.logger import logger
 
 router = APIRouter(prefix="/api/storage", tags=["storage"])
@@ -33,6 +40,12 @@ async def upload_file(file: UploadFile = File(...)):
     Returns:
         Public URL of uploaded file
     """
+    if not STORAGE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Azure Storage module not available"
+        )
+    
     uploader = get_uploader()
     
     if not uploader.is_configured():
@@ -65,6 +78,8 @@ async def upload_file(file: UploadFile = File(...)):
             size_bytes=len(content)
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"[red]Upload error:[/red] {e}", extra={"markup": True})
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
@@ -80,6 +95,12 @@ async def upload_multiple_files(files: List[UploadFile] = File(...)):
     Returns:
         List of public URLs
     """
+    if not STORAGE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Azure Storage module not available"
+        )
+    
     if len(files) > 10:
         raise HTTPException(status_code=400, detail="Maximum 10 files allowed")
     
@@ -122,6 +143,12 @@ async def upload_multiple_files(files: List[UploadFile] = File(...)):
 @router.get("/health")
 async def storage_health():
     """Check if Azure Storage is configured"""
+    if not STORAGE_AVAILABLE:
+        return {
+            "configured": False,
+            "error": "Azure Storage SDK not installed"
+        }
+    
     uploader = get_uploader()
     return {
         "configured": uploader.is_configured(),
