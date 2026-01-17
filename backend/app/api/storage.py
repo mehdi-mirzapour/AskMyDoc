@@ -14,7 +14,7 @@ except ImportError:
 
 from app.core.logger import logger
 
-router = APIRouter(prefix="/api/storage", tags=["storage"])
+router = APIRouter(prefix="/storage", tags=["storage"])
 
 
 class UploadResponse(BaseModel):
