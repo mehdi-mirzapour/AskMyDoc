@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pathlib import Path
 from typing import List
 import httpx
@@ -135,73 +135,71 @@ async def process_excel_query(request: AgentExcelRequest):
 
 
 @router.post("/local", response_model=AgentExcelResponse)
-async def process_excel_local_query(request: AgentExcelLocalRequest):
-    """Process Excel files from local file paths and answer a query
+async def process_excel_local_query(
+    query: str = Form(...),
+    files: List[UploadFile] = File(...)
+):
+    """Process uploaded Excel files from local machine and answer a query
     
     Args:
-        request: AgentExcelLocalRequest with query and file_paths (list of local file paths)
+        query: User's question (form field)
+        files: List of Excel files to upload from local machine (form files)
         
     Returns:
         AgentExcelResponse with answer and metadata
     """
-    logger.info(f"[bold blue]📁 Agent Excel Local request:[/bold blue] Query: {request.query}", extra={"markup": True})
-    logger.info(f"[cyan]📎 Processing {len(request.file_paths)} local file(s)[/cyan]", extra={"markup": True})
+    logger.info(f"[bold blue]📁 Agent Excel Local request:[/bold blue] {len(files)} files, Query: {query}", extra={"markup": True})
     
-    if not request.file_paths:
-        raise HTTPException(status_code=400, detail="No file paths provided")
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided")
     
-    if not request.query:
+    if not query:
         raise HTTPException(status_code=400, detail="No query provided")
     
+    temp_files = []
     all_tables = []
     
     try:
-        # Process local files
-        for idx, file_path in enumerate(request.file_paths):
-            logger.info(f"[cyan]📂 Processing file {idx + 1}/{len(request.file_paths)}:[/cyan] {file_path}", extra={"markup": True})
-            
-            # Convert to Path object
-            path = Path(file_path)
-            
-            # Check if file exists
-            if not path.exists():
-                logger.error(f"[red]File not found:[/red] {file_path}", extra={"markup": True})
-                raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
-            
-            # Check if it's a file (not a directory)
-            if not path.is_file():
-                logger.error(f"[red]Not a file:[/red] {file_path}", extra={"markup": True})
-                raise HTTPException(status_code=400, detail=f"Not a file: {file_path}")
-            
+        # Process uploaded files
+        for idx, file in enumerate(files):
             # Validate file extension
-            if not file_path.endswith(('.xlsx', '.xls')):
-                logger.error(f"[red]Invalid file type:[/red] {file_path}", extra={"markup": True})
-                raise HTTPException(status_code=400, detail=f"Invalid file type (must be .xlsx or .xls): {file_path}")
+            if not file.filename.endswith(('.xlsx', '.xls')):
+                raise HTTPException(status_code=400, detail=f"Invalid file type: {file.filename}")
+            
+            logger.info(f"[cyan]📥 Processing file {idx + 1}/{len(files)}:[/cyan] {file.filename}", extra={"markup": True})
+            
+            # Save to temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+            content = await file.read()
+            temp_file.write(content)
+            temp_file.close()
+            
+            temp_files.append(temp_file.name)
             
             try:
-                # Process Excel file directly from local path
-                tables = excel_processor.load_excel_file(path)
+                # Process Excel file
+                tables = excel_processor.load_excel_file(Path(temp_file.name))
                 all_tables.extend(tables)
-                logger.info(f"[green]✓ Created {len(tables)} table(s) from {path.name}[/green]", extra={"markup": True})
+                logger.info(f"[green]✓ Created {len(tables)} table(s) from {file.filename}[/green]", extra={"markup": True})
             except Exception as e:
-                logger.error(f"[red]Error processing {path.name}: {e}[/red]", extra={"markup": True})
-                raise HTTPException(status_code=500, detail=f"Error processing {path.name}: {str(e)}")
+                logger.error(f"[red]Error processing {file.filename}: {e}[/red]", extra={"markup": True})
+                raise HTTPException(status_code=500, detail=f"Error processing {file.filename}: {str(e)}")
         
         # Execute query
-        logger.info(f"[yellow]❓ Executing query:[/yellow] {request.query}", extra={"markup": True})
+        logger.info(f"[yellow]❓ Executing query:[/yellow] {query}", extra={"markup": True})
         
         try:
             agent = get_agent()
-            result = agent.query(request.query)
+            result = agent.query(query)
             
             logger.info("[bold green]✓ Query executed successfully[/bold green]", extra={"markup": True})
             
             return AgentExcelResponse(
-                query=request.query,
+                query=query,
                 answer=result["answer"],
                 sql_queries=result.get("sql_queries"),
                 model=result["model"],
-                files_processed=len(request.file_paths),
+                files_processed=len(files),
                 tables_created=all_tables,
                 timestamp=datetime.now()
             )
@@ -210,9 +208,11 @@ async def process_excel_local_query(request: AgentExcelLocalRequest):
             logger.error(f"[bold red]✗ Error executing query:[/bold red] {e}", extra={"markup": True})
             raise HTTPException(status_code=500, detail=f"Query execution error: {str(e)}")
     
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
-    except Exception as e:
-        logger.error(f"[bold red]✗ Unexpected error:[/bold red] {e}", extra={"markup": True})
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    finally:
+        # Clean up temporary files
+        for temp_path in temp_files:
+            try:
+                Path(temp_path).unlink()
+                logger.info(f"[dim]🗑️  Cleaned up temporary file[/dim]", extra={"markup": True})
+            except Exception as e:
+                logger.warning(f"[yellow]⚠ Failed to delete temp file {temp_path}: {e}[/yellow]", extra={"markup": True})
