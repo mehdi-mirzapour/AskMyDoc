@@ -66,6 +66,15 @@ class AgentExcelRequest(BaseModel):
     openaiFileIdRefs: Optional[List[Any]] = None  # Can be dict or string
 
 
+class AgentExcelLocalRequest(BaseModel):
+    """Request for agent_excel_local endpoint
+    
+    Accepts local file paths on the server filesystem
+    """
+    query: str
+    file_paths: List[str]
+
+
 class AgentExcelResponse(BaseModel):
     """Response for agent_excel endpoint"""
     query: str

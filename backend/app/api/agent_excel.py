@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 import httpx
 import tempfile
-from app.models.schemas import AgentExcelRequest, AgentExcelResponse
+from app.models.schemas import AgentExcelRequest, AgentExcelLocalRequest, AgentExcelResponse
 from app.core.logger import logger
 from app.agents.document_agent import get_agent
 from datetime import datetime
@@ -132,3 +132,87 @@ async def process_excel_query(request: AgentExcelRequest):
                 logger.info(f"[dim]🗑️  Cleaned up temporary file[/dim]", extra={"markup": True})
             except Exception as e:
                 logger.warning(f"[yellow]⚠ Failed to delete temp file {temp_path}: {e}[/yellow]", extra={"markup": True})
+
+
+@router.post("/local", response_model=AgentExcelResponse)
+async def process_excel_local_query(request: AgentExcelLocalRequest):
+    """Process Excel files from local file paths and answer a query
+    
+    Args:
+        request: AgentExcelLocalRequest with query and file_paths (list of local file paths)
+        
+    Returns:
+        AgentExcelResponse with answer and metadata
+    """
+    logger.info(f"[bold blue]📁 Agent Excel Local request:[/bold blue] Query: {request.query}", extra={"markup": True})
+    logger.info(f"[cyan]📎 Processing {len(request.file_paths)} local file(s)[/cyan]", extra={"markup": True})
+    
+    if not request.file_paths:
+        raise HTTPException(status_code=400, detail="No file paths provided")
+    
+    if not request.query:
+        raise HTTPException(status_code=400, detail="No query provided")
+    
+    all_tables = []
+    
+    try:
+        # Process local files
+        for idx, file_path in enumerate(request.file_paths):
+            logger.info(f"[cyan]📂 Processing file {idx + 1}/{len(request.file_paths)}:[/cyan] {file_path}", extra={"markup": True})
+            
+            # Convert to Path object
+            path = Path(file_path)
+            
+            # Check if file exists
+            if not path.exists():
+                logger.error(f"[red]File not found:[/red] {file_path}", extra={"markup": True})
+                raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+            
+            # Check if it's a file (not a directory)
+            if not path.is_file():
+                logger.error(f"[red]Not a file:[/red] {file_path}", extra={"markup": True})
+                raise HTTPException(status_code=400, detail=f"Not a file: {file_path}")
+            
+            # Validate file extension
+            if not file_path.endswith(('.xlsx', '.xls')):
+                logger.error(f"[red]Invalid file type:[/red] {file_path}", extra={"markup": True})
+                raise HTTPException(status_code=400, detail=f"Invalid file type (must be .xlsx or .xls): {file_path}")
+            
+            try:
+                # Process Excel file directly from local path
+                tables = excel_processor.load_excel_file(path)
+                all_tables.extend(tables)
+                logger.info(f"[green]✓ Created {len(tables)} table(s) from {path.name}[/green]", extra={"markup": True})
+            except Exception as e:
+                logger.error(f"[red]Error processing {path.name}: {e}[/red]", extra={"markup": True})
+                raise HTTPException(status_code=500, detail=f"Error processing {path.name}: {str(e)}")
+        
+        # Execute query
+        logger.info(f"[yellow]❓ Executing query:[/yellow] {request.query}", extra={"markup": True})
+        
+        try:
+            agent = get_agent()
+            result = agent.query(request.query)
+            
+            logger.info("[bold green]✓ Query executed successfully[/bold green]", extra={"markup": True})
+            
+            return AgentExcelResponse(
+                query=request.query,
+                answer=result["answer"],
+                sql_queries=result.get("sql_queries"),
+                model=result["model"],
+                files_processed=len(request.file_paths),
+                tables_created=all_tables,
+                timestamp=datetime.now()
+            )
+            
+        except Exception as e:
+            logger.error(f"[bold red]✗ Error executing query:[/bold red] {e}", extra={"markup": True})
+            raise HTTPException(status_code=500, detail=f"Query execution error: {str(e)}")
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"[bold red]✗ Unexpected error:[/bold red] {e}", extra={"markup": True})
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
